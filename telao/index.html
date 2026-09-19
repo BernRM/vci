@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VCI · Telão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --paper:#F2F0EB; --ink:#0E0E10; --red:#D7263D; --gray:#8A8780; --rule:#0E0E10;
+  font-size:min(1vw,1.7778vh); /* 1rem = 1% da largura do palco 16:9 */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--ink);overflow:hidden}
+body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-serif;color:var(--ink)}
+.stage{position:relative;width:100rem;height:56.25rem;background:var(--paper);overflow:hidden}
+/* grão de papel */
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:50;opacity:.22;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* retícula de meio-tom no canto */
+.halftone{position:absolute;right:-9rem;bottom:-17rem;width:30rem;height:30rem;transform:rotate(-45deg);pointer-events:none;
+  background-image:radial-gradient(var(--red) 28%,transparent 30%);background-size:1.1rem 1.1rem;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 70%);mask-image:linear-gradient(90deg,transparent,#000 70%);opacity:.6}
+.strip{position:absolute;left:-14rem;bottom:-4rem;width:30rem;height:1.6rem;background:var(--ink);transform:rotate(-45deg);pointer-events:none}
+
+.bebas{font-family:"Bebas Neue",Impact,"Arial Narrow",sans-serif;font-weight:400;letter-spacing:.01em;line-height:.9}
+.misreg{text-shadow:.35rem .25rem 0 var(--red)}
+
+/* barra superior e rodapé */
+.top{position:absolute;left:4rem;right:4rem;top:3rem;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:.35rem solid var(--ink);padding-bottom:1rem;z-index:5}
+.brand{font-size:3.2rem}
+.brand small{font-family:Rajdhani,sans-serif;font-weight:600;font-size:1.5rem;color:var(--gray);margin-left:1rem;letter-spacing:0}
+.phase{font-weight:700;font-size:2rem}
+.foot{position:absolute;left:14rem;right:4rem;bottom:2.6rem;display:flex;justify-content:space-between;font-weight:600;font-size:1.4rem;color:var(--gray);z-index:5}
+
+.screen{position:absolute;inset:0;display:none;z-index:4}
+.screen.on{display:block}
+
+/* PLACAR */
+.score{position:absolute;left:4rem;right:4rem;top:13rem;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3rem}
+.team{display:flex;flex-direction:column;gap:.6rem}
+.team.b{align-items:flex-end;text-align:right}
+.team .tag{font-size:11rem}
+.team .name{font-size:2.6rem;font-weight:700}
+.side{display:inline-block;font-weight:700;font-size:1.6rem;padding:.2rem 1rem;border:.25rem solid var(--ink);margin-top:.6rem}
+.side.atk{background:var(--ink);color:var(--paper)}
+.nums{display:flex;align-items:center;gap:2rem}
+.nums .n{font-size:19rem;min-width:13rem;text-align:center}
+.nums .sep{font-size:9rem;color:var(--red)}
+.meta{position:absolute;left:4rem;right:4rem;top:40rem;display:flex;justify-content:center;gap:5rem;font-weight:700;font-size:2.2rem}
+.meta b{font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:3.2rem;margin-left:.8rem}
+.pips{display:inline-flex;gap:.6rem;margin-left:.8rem;vertical-align:middle}
+.pip{width:1.6rem;height:1.6rem;border:.25rem solid var(--ink)}
+.pip.w{background:var(--red);border-color:var(--red)}
+
+/* CHAVE */
+.bracket{position:absolute;left:4rem;right:4rem;top:15rem;bottom:7rem;display:grid;gap:5rem}
+.col{position:relative;display:flex;flex-direction:column;justify-content:space-around;gap:1.4rem}
+.col h3{position:absolute;top:-3.4rem;left:0;font-weight:700;font-size:1.7rem;color:var(--gray)}
+.m{border:.3rem solid var(--ink);background:var(--paper);position:relative}
+.m.live{border-color:var(--red);box-shadow:.6rem .6rem 0 var(--red)}
+.m .row{position:relative;isolation:isolate;display:flex;justify-content:space-between;align-items:center;padding:.35rem 1.2rem;font-size:2.2rem;font-weight:700}
+.m .row+.row{border-top:.2rem solid var(--ink)}
+.m .row.win{background:var(--ink);color:var(--paper)}
+.m .row.lose{color:var(--gray);text-decoration:line-through;text-decoration-thickness:.2rem}
+.m .row .s{font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:2.6rem}
+.m .tbd{color:var(--gray)}
+.m .flag{position:absolute;top:50%;right:-4.6rem;transform:translateY(-50%) rotate(90deg);font-weight:700;font-size:1.3rem;color:var(--red);white-space:nowrap}
+
+/* VOTAÇÃO */
+.vote{position:absolute;left:4rem;right:4rem;top:11.5rem;bottom:7rem;display:grid;grid-template-columns:28rem 1fr;gap:5rem}
+.qrbox{display:flex;flex-direction:column;gap:1.2rem}
+.qrbox h2{font-size:5.6rem;white-space:nowrap}
+#qr{background:#fff;padding:1.2rem;width:23rem;height:23rem;border:.35rem solid var(--ink)}
+#qr img,#qr canvas{width:100%!important;height:100%!important}
+.qrbox p{font-weight:600;font-size:1.5rem;line-height:1.2;word-break:break-all}
+.cats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4rem}
+.cat h3{font-size:4.4rem;border-bottom:.35rem solid var(--ink);padding-bottom:.4rem;margin-bottom:1.4rem;display:flex;justify-content:space-between;align-items:baseline}
+.cat h3 span{font-family:Rajdhani,sans-serif;font-weight:600;font-size:1.6rem;color:var(--gray)}
+.bar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.4rem 1rem;margin-bottom:1.3rem}
+.bar .who{font-weight:700;font-size:2.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .ct{font-family:"Bebas Neue",sans-serif;font-size:2.6rem}
+.bar .track{grid-column:1/-1;height:1.4rem;background:repeating-linear-gradient(-45deg,transparent 0 .5rem,rgba(14,14,16,.12) .5rem .7rem)}
+.bar .fill{height:100%;background:var(--ink);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar.lead .fill{background:var(--red)}
+.reveal{display:none;text-align:left}
+.revealed .bars{display:none}
+.revealed .reveal{display:block}
+.reveal .big{font-size:7.5rem;white-space:nowrap;padding:.2em .3em .1em 0}
+.award .v{white-space:nowrap}
+.reveal .sub{font-weight:700;font-size:2.2rem;margin-top:.6rem}
+.closedtag{display:none;font-weight:700;font-size:1.8rem;color:var(--red)}
+.isclosed .closedtag{display:block}
+.isclosed #qr{opacity:.25}
+
+/* PRÓXIMA */
+.next{position:absolute;left:4rem;right:4rem;top:12rem;text-align:center}
+.next .lbl{font-weight:700;font-size:2.4rem;color:var(--gray)}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3rem;margin-top:3rem}
+.vs .tag{font-size:13rem}
+.vs .name{font-weight:700;font-size:2.4rem}
+.vs .x{font-size:7rem;color:var(--red)}
+.cd{margin-top:3.4rem;font-size:10rem}
+.cd.zero{color:var(--red)}
+
+/* ENCERRAMENTO */
+.final{position:absolute;left:4rem;right:4rem;top:11rem;bottom:6rem;display:grid;grid-template-columns:1.2fr 1fr;gap:5rem;align-items:center}
+.champ .lbl{font-weight:700;font-size:2.4rem;color:var(--red)}
+.champ .tag{font-size:17rem}
+.champ .name{font-weight:700;font-size:3rem}
+.champ .roster{font-weight:600;font-size:1.8rem;color:var(--gray);margin-top:1rem}
+.awards{display:flex;flex-direction:column;gap:2.4rem}
+.award{border-left:.6rem solid var(--ink);padding-left:1.6rem}
+.award:first-child{border-color:var(--red)}
+.award .t{font-weight:700;font-size:1.8rem;color:var(--gray)}
+.award .v{font-size:5.4rem}
+.award .d{font-weight:600;font-size:1.6rem}
+
+.offline{position:absolute;right:1rem;top:1rem;z-index:60;font-weight:700;font-size:1.2rem;background:var(--red);color:#fff;padding:.3rem .8rem;display:none}
+.offline.on{display:block}
+
+/* ===== ANIMAÇÕES ===== */
+.wipe{position:absolute;inset:0;z-index:40;pointer-events:none;overflow:hidden}
+.wipe>div{position:absolute;top:0;bottom:0;left:-20%;width:140%;transform:translateX(-125%);clip-path:polygon(12% 0,100% 0,88% 100%,0 100%)}
+.wipe .w2{background:var(--red)}
+.wipe .w1{background:var(--ink);display:grid;place-items:center}
+.wipe .w1 span{color:var(--paper);font-size:15rem;text-shadow:.5rem .35rem 0 var(--red)}
+.wipe.go .w2{animation:wipe 1s cubic-bezier(.75,0,.25,1) both}
+.wipe.go .w1{animation:wipe 1s cubic-bezier(.75,0,.25,1) .08s both}
+@keyframes wipe{0%{transform:translateX(-125%)}44%,56%{transform:translateX(0)}100%{transform:translateX(125%)}}
+
+.enter [data-a]{animation-duration:.75s;animation-timing-function:cubic-bezier(.2,.8,.2,1);animation-fill-mode:both;animation-delay:calc(var(--i,0) * 110ms + 60ms)}
+.enter [data-a=l]{animation-name:inL}
+.enter [data-a=r]{animation-name:inR}
+.enter [data-a=u]{animation-name:inU}
+.enter [data-a=d]{animation-name:inD}
+.enter [data-a=s]{animation-name:stamp}
+@keyframes inL{from{opacity:0;transform:translateX(-9rem)}}
+@keyframes inR{from{opacity:0;transform:translateX(9rem)}}
+@keyframes inU{from{opacity:0;transform:translateY(4rem)}}
+@keyframes inD{from{opacity:0;transform:translateY(-4rem)}}
+@keyframes stamp{0%{opacity:0;transform:scale(1.7) rotate(-5deg)}55%{opacity:1;transform:scale(.95) rotate(1deg)}100%{opacity:1;transform:none}}
+
+.bump{display:inline-block;animation:bump .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes bump{0%{transform:translateY(-.22em) scale(1.14);color:var(--red)}100%{transform:none}}
+.team.scored .tag{animation:hit .8s ease-out}
+@keyframes hit{0%{text-shadow:1.2rem .8rem 0 var(--red)}100%{text-shadow:.35rem .25rem 0 var(--red)}}
+.side.flip{animation:flip .5s cubic-bezier(.2,.8,.2,1)}
+@keyframes flip{from{transform:rotateX(90deg)}}
+
+.m .row.sweep{background:transparent}
+.m .row.sweep::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--ink);transform-origin:left;animation:sx .65s cubic-bezier(.75,0,.25,1) both}
+@keyframes sx{from{transform:scaleX(0)}}
+.m .row.arrive>span:first-child{display:inline-block;animation:inL .7s .35s cubic-bezier(.2,.8,.2,1) both}
+
+.bar.new{animation:inR .55s cubic-bezier(.2,.8,.2,1) both}
+.revealed .reveal .big{animation:stamp .8s cubic-bezier(.2,.8,.2,1) both}
+.revealed .reveal .sub{animation:inU .6s .5s both}
+.award .v.stamp{animation:stamp .8s cubic-bezier(.2,.8,.2,1) both}
+.cd.hot{animation:pulse 1s ease-in-out infinite;color:var(--red)}
+@keyframes pulse{50%{transform:scale(1.07)}}
+
+@media (prefers-reduced-motion:reduce){.wipe{display:none}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="halftone"></div><div class="strip"></div>
+  <div class="wipe" id="wipe"><div class="w2"></div><div class="w1"><span class="bebas">VCI</span></div></div>
+  <header class="top">
+    <div class="brand bebas">VCI<small>Valorant Cup Ifes · 2ª edição</small></div>
+    <div class="phase" id="phase"></div>
+  </header>
+
+  <!-- PLACAR -->
+  <section class="screen" data-s="live">
+    <div class="score">
+      <div class="team a" data-a="l"><div class="tag bebas misreg" id="l-tagA">—</div><div class="name" id="l-nameA"></div><div><span class="side" id="l-sideA"></span></div></div>
+      <div class="nums" data-a="d" style="--i:1"><div class="n bebas" id="l-sA">0</div><div class="sep bebas">:</div><div class="n bebas" id="l-sB">0</div></div>
+      <div class="team b" data-a="r" style="--i:1"><div class="tag bebas misreg" id="l-tagB">—</div><div class="name" id="l-nameB"></div><div><span class="side" id="l-sideB"></span></div></div>
+    </div>
+    <div class="meta" data-a="u" style="--i:3"><div>Mapa<b id="l-map">—</b></div><div id="l-series"></div></div>
+  </section>
+
+  <!-- CHAVE -->
+  <section class="screen" data-s="bracket"><div class="bracket" id="bracket"></div></section>
+
+  <!-- VOTAÇÃO -->
+  <section class="screen" data-s="vote">
+    <div class="vote" id="vote">
+      <div class="qrbox" data-a="l">
+        <h2 class="bebas misreg">Vote agora</h2>
+        <div id="qr"></div>
+        <p id="v-url"></p>
+        <div class="closedtag">Votação encerrada</div>
+      </div>
+      <div class="cats" id="v-cats" data-a="r" style="--i:1"></div>
+    </div>
+  </section>
+
+  <!-- PRÓXIMA -->
+  <section class="screen" data-s="next">
+    <div class="next">
+      <div class="lbl" id="n-lbl" data-a="d">Próxima partida</div>
+      <div class="vs">
+        <div data-a="l" style="--i:1"><div class="tag bebas misreg" id="n-tagA">—</div><div class="name" id="n-nameA"></div></div>
+        <div class="x bebas" data-a="s" style="--i:2">vs</div>
+        <div data-a="r" style="--i:1"><div class="tag bebas misreg" id="n-tagB">—</div><div class="name" id="n-nameB"></div></div>
+      </div>
+      <div class="cd bebas" id="n-cd" data-a="u" style="--i:3"></div>
+    </div>
+  </section>
+
+  <!-- ENCERRAMENTO -->
+  <section class="screen" data-s="final">
+    <div class="final">
+      <div class="champ"><div class="lbl" data-a="d">Campeão da 2ª edição</div><div class="tag bebas misreg" id="f-tag" data-a="s" style="--i:1">—</div><div class="name" id="f-name"></div><div class="roster" id="f-roster"></div></div>
+      <div class="awards" id="f-awards" data-a="r" style="--i:3"></div>
+    </div>
+  </section>
+
+  <footer class="foot"><span>JACITEC 2026 · Ifes Cachoeiro · Lab B2</span><span id="clock"></span></footer>
+  <div class="offline" id="offline">sem conexão</div>
+</div>
+
+<script>
+/* ===== Configuração ===== */
+const SUPABASE_URL = "https://zdoayfqwyhngipdqoaiu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
+const VOTE_URL     = "https://bernrm.github.io/vci/votar/";
+/* ======================== */
+
+const CAT_LABEL = {mvp:"MVP", troll:"Mais troll", nome:"Melhor nome"};
+const $ = id => document.getElementById(id);
+const DEMO = new URLSearchParams(location.search).has("demo");
+let db = {teams:[],players:[],matches:[],polls:[],votes:[],state:{screen:"next"}};
+let localScreen = null;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function fit(el,maxRem){
+  const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
+  let s=maxRem; el.style.fontSize=s+"rem";
+  const w=el.parentElement.clientWidth; if(!w) return;
+  while(el.scrollWidth>w && s>2.5){ s-=0.25; el.style.fontSize=s+"rem"; }
+}
+function bump(el){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+function replay(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+let shown=null, wipeT=null;
+function showScreen(scr){
+  if(scr===shown) return;
+  const first = shown===null; shown=scr;
+  const apply=()=>{
+    document.querySelectorAll(".screen").forEach(s=>{
+      const on=s.dataset.s===scr; s.classList.toggle("on",on); s.classList.remove("enter");
+      if(on){ void s.offsetWidth; s.classList.add("enter"); clearTimeout(s._t); s._t=setTimeout(()=>s.classList.remove("enter"),1800); }
+    });
+  };
+  if(first||REDUCED){ apply(); return; }
+  replay($("wipe"),"go"); clearTimeout(wipeT); wipeT=setTimeout(apply,520);
+}
+
+/* ---------- dados ---------- */
+let sb = null;
+async function loadAll(){
+  if(DEMO){ db = demoData(); render(); return; }
+  const [t,p,m,po,s] = await Promise.all([
+    sb.from("teams").select("*"), sb.from("players").select("*"),
+    sb.from("matches").select("*"), sb.from("polls").select("*"),
+    sb.from("display_state").select("*").eq("id",1).single()
+  ]);
+  if(t.error||m.error||s.error){ $("offline").classList.add("on"); return; }
+  $("offline").classList.remove("on");
+  db.teams=t.data; db.players=p.data; db.matches=m.data; db.polls=po.data; db.state=s.data;
+  await loadVotes(); render();
+}
+async function loadVotes(){
+  if(DEMO) return;
+  const pid = currentPollId();
+  if(!pid){ db.votes=[]; return; }
+  const v = await sb.from("votes").select("poll_id,category,player_id,team_id").eq("poll_id",pid);
+  if(!v.error) db.votes=v.data;
+}
+function currentPollId(){
+  const st=db.state; if(st.poll_id) return st.poll_id;
+  if(st.screen==="final"){ const g=db.polls.filter(p=>!p.match_id).sort((a,b)=>b.id-a.id)[0]; return g&&g.id; }
+  const byMatch=db.polls.filter(p=>p.match_id===st.match_id).sort((a,b)=>b.id-a.id)[0];
+  return byMatch&&byMatch.id;
+}
+let t0=null;
+function refresh(){ clearTimeout(t0); t0=setTimeout(loadAll,120); }
+function subscribe(){
+  sb.channel("telao")
+    .on("postgres_changes",{event:"*",schema:"public",table:"display_state"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"matches"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"polls"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"teams"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"players"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"votes"},async()=>{await loadVotes();renderVote();renderFinal();})
+    .subscribe(st=>{ $("offline").classList.toggle("on", st==="CHANNEL_ERROR"||st==="TIMED_OUT"||st==="CLOSED"); if(st==="SUBSCRIBED") loadAll(); });
+}
+
+/* ---------- utilidades ---------- */
+const team = id => db.teams.find(t=>t.id===id);
+const player = id => db.players.find(p=>p.id===id);
+const maxRound = () => Math.max(1,...db.matches.map(m=>m.bracket_round));
+function roundName(r){
+  const d=maxRound()-r;
+  return ["Final","Semifinal","Quartas de final","Oitavas de final"][d] || ("Fase "+r);
+}
+function matchLabel(m){ return m ? roundName(m.bracket_round)+(db.matches.filter(x=>x.bracket_round===m.bracket_round).length>1?" · Jogo "+m.slot:"") : ""; }
+function setText(id,v){ $(id).textContent = v ?? ""; }
+
+/* ---------- render ---------- */
+function render(){
+  const scr = localScreen || db.state.screen || "next";
+  showScreen(scr);
+  const m = db.matches.find(x=>x.id===db.state.match_id);
+  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação da partida", next:matchLabel(m), final:"Encerramento"}[scr];
+  setText("phase", phase);
+  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal();
+}
+
+function renderLive(m){
+  if(!m) return;
+  const A=team(m.team_a)||{}, B=team(m.team_b)||{};
+  setText("l-tagA",A.tag||"—"); setText("l-nameA",A.name); setText("l-tagB",B.tag||"—"); setText("l-nameB",B.name);
+  const pv=renderLive.prev;
+  const same = pv && pv.id===m.id;
+  if(same && pv.a!==m.score_a){ bump($("l-sA")); if(m.score_a>pv.a) replay(document.querySelector(".team.a"),"scored"); }
+  if(same && pv.b!==m.score_b){ bump($("l-sB")); if(m.score_b>pv.b) replay(document.querySelector(".team.b"),"scored"); }
+  setText("l-sA",m.score_a); setText("l-sB",m.score_b);
+  const aAtk = m.side_a==="ATK";
+  const sa=$("l-sideA"), sbb=$("l-sideB");
+  sa.textContent = aAtk?"Ataque":"Defesa"; sa.classList.toggle("atk",aAtk);
+  sbb.textContent = aAtk?"Defesa":"Ataque"; sbb.classList.toggle("atk",!aAtk);
+  if(same && pv.side!==m.side_a){ replay($("l-sideA"),"flip"); replay($("l-sideB"),"flip"); }
+  renderLive.prev={id:m.id,a:m.score_a,b:m.score_b,side:m.side_a};
+  setText("l-map", m.map||"—");
+  const ser=$("l-series");
+  if(m.best_of>1){
+    const need=Math.ceil(m.best_of/2);
+    const pips=(n)=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");
+    ser.innerHTML=`${A.tag||"A"} <span class="pips">${pips(m.series_a)}</span> &nbsp; MD${m.best_of} &nbsp; <span class="pips">${pips(m.series_b)}</span> ${B.tag||"B"}`;
+  } else ser.textContent="Partida única";
+}
+
+function renderBracket(){
+  const R=maxRound(), el=$("bracket");
+  el.style.gridTemplateColumns=`repeat(${R},1fr)`;
+  let html="";
+  for(let r=1;r<=R;r++){
+    const ms=db.matches.filter(x=>x.bracket_round===r).sort((a,b)=>a.slot-b.slot);
+    html+=`<div class="col" data-a="u" style="--i:${r-1}"><h3>${roundName(r)}</h3>`;
+    ms.forEach(m=>{
+      const live = m.id===db.state.match_id && (m.status==="live"||db.state.screen==="live");
+      const row=(tid,sc)=>{
+        const t=team(tid); if(!t) return `<div class="row"><span class="tbd">A definir</span><span></span></div>`;
+        let cls = m.winner ? (m.winner===tid?"win":"lose") : "";
+        const pv = renderBracket.prev;
+        if(pv && m.winner===tid && pv.win[m.id]!==m.winner) cls+=" sweep";
+        if(pv && !(pv.teams[m.id]||[]).includes(tid)) cls+=" arrive";
+        const s = m.status==="done"||m.status==="live" ? (m.best_of>1?sc.series:sc.score) : "";
+        return `<div class="row ${cls}"><span>${t.tag}</span><span class="s">${s}</span></div>`;
+      };
+      html+=`<div class="m ${live?"live":""}">${live?'<span class="flag">AO VIVO</span>':""}${row(m.team_a,{score:m.score_a,series:m.series_a})}${row(m.team_b,{score:m.score_b,series:m.series_b})}</div>`;
+    });
+    html+=`</div>`;
+  }
+  el.innerHTML=html;
+  const win={},teams={}; db.matches.forEach(m=>{win[m.id]=m.winner;teams[m.id]=[m.team_a,m.team_b];});
+  renderBracket.prev={win,teams};
+}
+
+let qrFor=null, voteSig=null;
+function voteLabel(k){
+  if(k[0]==="p"){const p=player(+k.slice(1));const t=p&&team(p.team_id);return p?`${p.nick}${t?" · "+t.tag:""}`:"?";}
+  const t=team(+k.slice(1));return t?t.name:"?";
+}
+function tally(pollId,cat){
+  const vs=db.votes.filter(v=>v.poll_id===pollId&&v.category===cat), c={};
+  vs.forEach(v=>{const k=v.player_id?("p"+v.player_id):("t"+v.team_id);c[k]=(c[k]||0)+1;});
+  return {total:vs.length, rows:Object.entries(c).sort((a,b)=>b[1]-a[1])};
+}
+function renderVote(){
+  const pid=currentPollId(); const poll=db.polls.find(p=>p.id===pid);
+  const box=$("vote"), cats=$("v-cats");
+  if(!poll){ cats.innerHTML=`<div class="cat"><h3 class="bebas">Sem votação</h3></div>`; voteSig=null; return; }
+  const url = VOTE_URL+"?p="+poll.id;
+  if(qrFor!==url && typeof QRCode!=="undefined"){ $("qr").innerHTML=""; new QRCode($("qr"),{text:url,width:512,height:512,colorDark:"#0E0E10",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M}); qrFor=url; }
+  setText("v-url", url.replace("https://",""));
+  box.classList.toggle("revealed", poll.status==="revealed");
+  box.classList.toggle("isclosed", poll.status!=="open");
+  const sig=poll.id+"|"+poll.categories.join(",");
+  if(voteSig!==sig){
+    cats.innerHTML=poll.categories.map(cat=>`<div class="cat" data-cat="${cat}"><h3 class="bebas">${CAT_LABEL[cat]||cat}<span class="tot"></span></h3><div class="bars"><p class="wait" style="font-weight:600;font-size:2rem;color:var(--gray)">Aguardando votos…</p></div><div class="reveal"></div></div>`).join("");
+    voteSig=sig;
+  }
+  poll.categories.forEach(cat=>{
+    const el=cats.querySelector(`[data-cat="${cat}"]`); if(!el) return;
+    const {total,rows}=tally(poll.id,cat); const top=rows.length?rows[0][1]:1;
+    el.querySelector(".tot").textContent=`${total} ${total===1?"voto":"votos"}`;
+    const bars=el.querySelector(".bars"); bars.querySelector(".wait").hidden=rows.length>0;
+    const before=new Map(); bars.querySelectorAll(".bar").forEach(b=>before.set(b.dataset.k,b.getBoundingClientRect().top));
+    const shownRows=rows.slice(0,5), keep=new Set(shownRows.map(r=>r[0]));
+    bars.querySelectorAll(".bar").forEach(b=>{ if(!keep.has(b.dataset.k)) b.remove(); });
+    shownRows.forEach(([k,c],i)=>{
+      let b=bars.querySelector(`.bar[data-k="${k}"]`);
+      if(!b){ b=document.createElement("div"); b.className="bar new"; b.dataset.k=k;
+        b.innerHTML=`<div class="who"></div><div class="ct"></div><div class="track"><div class="fill" style="width:0"></div></div>`;
+        b.querySelector(".who").textContent=voteLabel(k); bars.appendChild(b); }
+      const ct=b.querySelector(".ct"); if(ct.textContent!==String(c)){ const had=ct.textContent!==""; ct.textContent=c; if(had) bump(ct); }
+      b.classList.toggle("lead",i===0);
+      const fill=b.querySelector(".fill"), w=Math.round(c/top*100)+"%";
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ fill.style.width=w; }));
+    });
+    shownRows.forEach(([k])=>bars.appendChild(bars.querySelector(`.bar[data-k="${k}"]`)));
+    if(!REDUCED) bars.querySelectorAll(".bar").forEach(b=>{
+      const t0=before.get(b.dataset.k); if(t0==null) return;
+      const dy=t0-b.getBoundingClientRect().top;
+      if(dy) b.animate([{transform:`translateY(${dy}px)`},{transform:"none"}],{duration:550,easing:"cubic-bezier(.2,.8,.2,1)"});
+    });
+    const w=rows[0];
+    el.querySelector(".reveal").innerHTML = w ? `<div class="big bebas misreg">${voteLabel(w[0]).split(" · ")[0]}</div><div class="sub">${w[1]} de ${total} votos</div>` : `<div class="sub">Sem votos</div>`;
+    const big=el.querySelector(".reveal .big"); if(big && poll.status==="revealed") requestAnimationFrame(()=>fit(big,7.5));
+  });
+}
+
+function renderNext(m){
+  if(!m) return;
+  const A=team(m.team_a)||{}, B=team(m.team_b)||{};
+  setText("n-lbl","Próxima partida · "+matchLabel(m));
+  setText("n-tagA",A.tag||"A definir"); setText("n-nameA",A.name); setText("n-tagB",B.tag||"A definir"); setText("n-nameB",B.name);
+}
+
+function renderFinal(){
+  const R=maxRound(); const fm=db.matches.find(x=>x.bracket_round===R);
+  const ch = fm&&fm.winner ? team(fm.winner) : null;
+  setText("f-tag", ch?ch.tag:"—"); setText("f-name", ch?ch.name:"A definir");
+  setText("f-roster", ch? db.players.filter(p=>p.team_id===ch.id&&!p.is_sub).map(p=>p.nick).join(" · ") : "");
+  const g=db.polls.filter(p=>!p.match_id).sort((a,b)=>b.id-a.id)[0];
+  const aw=$("f-awards");
+  if(!g){ aw.innerHTML=""; return; }
+  aw.innerHTML = g.categories.map(cat=>{
+    const vs=db.votes.filter(v=>v.poll_id===g.id&&v.category===cat); const c={};
+    vs.forEach(v=>{const k=v.player_id?("p"+v.player_id):("t"+v.team_id);c[k]=(c[k]||0)+1;});
+    const w=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];
+    let name="—", d="";
+    if(g.status==="revealed"&&w){ if(w[0][0]==="p"){const p=player(+w[0].slice(1));name=p?p.nick:"?";const t=p&&team(p.team_id);d=t?t.name:"";} else {const t=team(+w[0].slice(1));name=t?t.tag:"?";d=t?t.name:"";} }
+    else if(g.status!=="revealed") { name="?"; d="Revelação em breve"; }
+    const title = cat==="troll" ? "Troféu Troll" : (CAT_LABEL[cat]||cat);
+    const st = g.status==="revealed" && !renderFinal.wasRevealed ? " stamp" : "";
+    return `<div class="award"><div class="t">${title}</div><div class="v bebas${st}">${name}</div><div class="d">${d}</div></div>`;
+  }).join("");
+  renderFinal.wasRevealed = g.status==="revealed";
+  requestAnimationFrame(()=>aw.querySelectorAll(".v").forEach(v=>fit(v,5.4)));
+}
+
+/* ---------- relógio e contagem ---------- */
+function tick(){
+  const now=new Date();
+  setText("clock", now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}));
+  const cd=$("n-cd"), to=db.state.countdown_to ? new Date(db.state.countdown_to) : null;
+  if(!to){ cd.textContent=""; return; }
+  const s=Math.max(0,Math.round((to-now)/1000));
+  cd.textContent = String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+  cd.classList.toggle("zero", s===0); cd.classList.toggle("hot", s>0 && s<=10);
+}
+setInterval(tick,500);
+
+/* ---------- plano B: teclado ---------- */
+const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final"};
+document.addEventListener("keydown",e=>{
+  if(KEYS[e.key]){ localScreen=KEYS[e.key]; render(); }
+  if(e.key==="0"){ localScreen=null; render(); }
+  if(e.key==="f"||e.key==="F"){ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); }
+  if(e.key==="r"||e.key==="R"){ loadAll(); }
+  if(DEMO){ /* teclas de teste no modo demo */
+    const m=db.matches.find(x=>x.id===db.state.match_id);
+    if(e.key==="a"&&m){ m.score_a++; render(); }
+    if(e.key==="b"&&m){ m.score_b++; render(); }
+    if(e.key==="s"&&m){ m.side_a=m.side_a==="ATK"?"DEF":"ATK"; render(); }
+    if(e.key==="v"){ const ps=[1,2,3,4,5,36,37,38,39,40]; db.votes.push({poll_id:1,category:Math.random()<.5?"mvp":"troll",player_id:ps[Math.floor(Math.random()*ps.length)]}); renderVote(); }
+    if(e.key==="w"&&m&&!m.winner){ m.winner=m.team_a; m.status="done"; const n=db.matches.find(x=>x.bracket_round===m.bracket_round+1&&x.slot===Math.ceil(m.slot/2)); if(n) n[m.slot%2?"team_a":"team_b"]=m.team_a; render(); }
+    if(e.key==="x"){ const p=db.polls[0]; p.status=p.status==="revealed"?"open":"revealed"; renderVote(); }
+  }
+});
+
+/* ---------- demo ---------- */
+function demoData(){
+  const tags=[["MRE","Mármore Esports"],["B2G","Bloco 2 Gaming"],["OSM","Os Sem Mira"],["CON","Clutch ou Nada"],["SNP","Spike no Pé"],["RCH","Equipe Rocha"],["UBL","Última Bala"],["CCA","Café com Ace"]];
+  const teams=tags.map((t,i)=>({id:i+1,tag:t[0],name:t[1]}));
+  const players=[]; teams.forEach(t=>{for(let n=1;n<=5;n++)players.push({id:players.length+1,team_id:t.id,nick:["Sombra","Kiwi","Bala","Neblina","Faísca"][n-1]+t.id,is_sub:false});});
+  const matches=[
+    {id:1,bracket_round:1,slot:1,team_a:1,team_b:8,best_of:1,map:"Ascent",score_a:13,score_b:9,series_a:0,series_b:0,side_a:"ATK",winner:1,status:"done"},
+    {id:2,bracket_round:1,slot:2,team_a:4,team_b:5,best_of:1,map:"Bind",score_a:8,score_b:7,series_a:0,series_b:0,side_a:"DEF",winner:null,status:"live"},
+    {id:3,bracket_round:1,slot:3,team_a:2,team_b:7,best_of:1,map:null,score_a:0,score_b:0,series_a:0,series_b:0,side_a:"ATK",winner:null,status:"pending"},
+    {id:4,bracket_round:1,slot:4,team_a:3,team_b:6,best_of:1,map:null,score_a:0,score_b:0,series_a:0,series_b:0,side_a:"ATK",winner:null,status:"pending"},
+    {id:5,bracket_round:2,slot:1,team_a:1,team_b:null,best_of:1,score_a:0,score_b:0,series_a:0,series_b:0,side_a:"ATK",winner:null,status:"pending"},
+    {id:6,bracket_round:2,slot:2,team_a:null,team_b:null,best_of:1,score_a:0,score_b:0,series_a:0,series_b:0,side_a:"ATK",winner:null,status:"pending"},
+    {id:7,bracket_round:3,slot:1,team_a:null,team_b:null,best_of:3,score_a:0,score_b:0,series_a:0,series_b:0,side_a:"ATK",winner:null,status:"pending"}];
+  const polls=[{id:1,match_id:1,title:"MRE x CCA",categories:["mvp","troll"],status:"open"}];
+  const votes=[]; const add=(c,p,n)=>{for(let i=0;i<n;i++)votes.push({poll_id:1,category:c,player_id:p});};
+  add("mvp",1,11);add("mvp",3,7);add("mvp",38,4);add("mvp",2,2);add("troll",39,9);add("troll",5,6);add("troll",36,3);
+  const q=new URLSearchParams(location.search);
+  return {teams,players,matches,polls,votes,state:{screen:q.get("s")||"live",match_id:+(q.get("m")||2),poll_id:1,countdown_to:new Date(Date.now()+272000).toISOString()}};
+}
+
+/* ---------- início ---------- */
+if(DEMO){ loadAll(); }
+else { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); loadAll(); subscribe(); setInterval(loadAll, 60000); }
+</script>
+</body>
+</html>

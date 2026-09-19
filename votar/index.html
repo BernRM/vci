@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VCI · Votação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--paper:#F2F0EB;--ink:#0E0E10;--red:#D7263D;--gray:#77746D}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:600 17px/1.35 Rajdhani,"Arial Narrow",system-ui,sans-serif;min-height:100vh;padding-bottom:calc(110px + env(safe-area-inset-bottom,0))}
+.bebas{font-family:"Bebas Neue",Impact,"Arial Narrow",sans-serif;font-weight:400;letter-spacing:.01em;line-height:.9}
+header{padding:calc(22px + env(safe-area-inset-top,0)) 18px 14px;border-bottom:4px solid var(--ink)}
+header .k{font-size:15px;color:var(--gray)}
+header h1{font-size:54px;text-shadow:3px 2px 0 var(--red);margin-top:4px}
+header p{font-size:18px;margin-top:4px}
+main{max-width:560px;margin:0 auto;padding:0 18px}
+.cat{padding:20px 0 6px}
+.cat h2{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:34px;line-height:1}
+.cat .q{font-size:15px;color:var(--gray);margin:2px 0 10px}
+.team{margin:10px 0 4px;font-size:14px;color:var(--gray)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{border:3px solid var(--ink);background:var(--paper);min-height:52px;padding:8px 10px;text-align:left;font:700 18px Rajdhani,sans-serif;color:var(--ink);cursor:pointer;touch-action:manipulation;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt.sel{background:var(--ink);color:var(--paper);box-shadow:4px 4px 0 var(--red)}
+.search{width:100%;border:3px solid var(--ink);background:#fff;padding:10px;min-height:48px;font:600 17px Rajdhani,sans-serif;margin-bottom:6px;border-radius:0}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:4px solid var(--ink);padding:12px 18px calc(12px + env(safe-area-inset-bottom,0))}
+.send{width:100%;max-width:560px;display:block;margin:0 auto;min-height:56px;border:0;background:var(--red);color:#fff;font:400 28px "Bebas Neue",Impact,sans-serif;letter-spacing:.02em;cursor:pointer}
+.send:disabled{background:#C9C6BE;color:var(--gray)}
+.msg{padding:48px 18px;text-align:center}
+.msg h2{font-size:64px;text-shadow:3px 2px 0 var(--red)}
+.msg p{font-size:19px;margin-top:10px}
+.err{color:var(--red);text-align:center;font-size:15px;margin-top:8px;min-height:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="k">VCI · Valorant Cup Ifes · 2ª edição</div>
+  <h1 class="bebas" id="title">Votação</h1>
+  <p id="sub">Carregando…</p>
+</header>
+<main id="main"></main>
+<div class="bar" id="bar" hidden><button class="send" id="send" disabled>Enviar voto</button><div class="err" id="err"></div></div>
+
+<script>
+const SUPABASE_URL="https://zdoayfqwyhngipdqoaiu.supabase.co";
+const SUPABASE_KEY="sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const pollId=+new URLSearchParams(location.search).get("p");
+const CATS={mvp:["MVP","Quem jogou mais?"],troll:["Mais troll","Quem mais aprontou?"],nome:["Melhor nome","Qual equipe tem o melhor nome?"]};
+let poll=null,teams=[],players=[],choice={};
+
+function message(h,p){$("bar").hidden=true;$("main").innerHTML=`<div class="msg"><h2 class="bebas">${h}</h2><p>${p}</p></div>`;}
+const votedKey=()=>"vci-voted-"+pollId;
+
+async function boot(){
+  if(!pollId){message("Ops","Link de votação inválido. Escaneie o QR code do telão.");return;}
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){const r=await sb.auth.signInAnonymously();if(r.error){message("Ops","Não foi possível iniciar a votação. Tente de novo.");return;}}
+  const [p,t,pl]=await Promise.all([sb.from("polls").select("*").eq("id",pollId).single(),sb.from("teams").select("*"),sb.from("players").select("*")]);
+  if(p.error){message("Ops","Votação não encontrada.");return;}
+  poll=p.data;teams=t.data;players=pl.data;
+  sb.channel("poll"+pollId).on("postgres_changes",{event:"UPDATE",schema:"public",table:"polls",filter:"id=eq."+pollId},e=>{poll=e.new;view();}).subscribe();
+  view();
+}
+
+function view(){
+  $("title").textContent=poll.match_id?poll.title:"Votação final";
+  if(localStorage.getItem(votedKey())){$("sub").textContent="Obrigado!";message("Voto enviado","Acompanhe o resultado no telão.");return;}
+  if(poll.status!=="open"){$("sub").textContent="";message("Votação encerrada",poll.status==="revealed"?"O resultado já está no telão.":"Aguarde a próxima votação no telão.");return;}
+  $("sub").textContent="Escolha um nome em cada categoria.";
+  $("main").innerHTML=poll.categories.map(c=>{
+    const [h,q]=CATS[c]||[c,""];
+    return `<div class="cat" data-c="${c}"><h2>${h}</h2><div class="q">${q}</div><div class="list"></div></div>`;
+  }).join("");
+  fillLists();
+  $("bar").hidden=false; update();
+}
+
+async function fillLists(){
+  let tIds=null;
+  if(poll.match_id){const r=await sb.from("matches").select("team_a,team_b").eq("id",poll.match_id).single();if(!r.error)tIds=[r.data.team_a,r.data.team_b].filter(Boolean);}
+  const tList=tIds?teams.filter(t=>tIds.includes(t.id)):teams;
+  document.querySelectorAll(".cat").forEach(el=>{
+    const c=el.dataset.c, box=el.querySelector(".list");
+    if(c==="nome"){
+      box.innerHTML=`<div class="opts">${tList.map(t=>`<button class="opt" data-v="t${t.id}" title="${t.name}">${t.name}</button>`).join("")}</div>`;
+    } else {
+      const many=tList.length>2;
+      box.innerHTML=(many?`<input class="search" placeholder="Buscar jogador" data-s>`:"")+tList.map(t=>{
+        const ps=players.filter(p=>p.team_id===t.id);
+        return `<div class="grp"><div class="team">${t.name} · ${t.tag}</div><div class="opts">${ps.map(p=>`<button class="opt" data-v="p${p.id}" data-n="${p.nick.toLowerCase()}">${p.nick}</button>`).join("")}</div></div>`;
+      }).join("");
+    }
+    box.addEventListener("click",e=>{const b=e.target.closest(".opt");if(!b)return;box.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));b.classList.add("sel");choice[c]=b.dataset.v;update();});
+    const s=box.querySelector("[data-s]");
+    if(s)s.addEventListener("input",()=>{const q=s.value.toLowerCase();box.querySelectorAll(".grp").forEach(g=>{let any=false;g.querySelectorAll(".opt").forEach(o=>{const ok=o.dataset.n.includes(q);o.hidden=!ok;any=any||ok;});g.hidden=!any;});});
+  });
+}
+function update(){$("send").disabled=!poll.categories.every(c=>choice[c]);}
+
+$("send").onclick=async()=>{
+  $("send").disabled=true;$("err").textContent="";
+  const {data:{user}}=await sb.auth.getUser();
+  const rows=poll.categories.map(c=>{const v=choice[c];return {poll_id:pollId,category:c,voter:user.id,player_id:v[0]==="p"?+v.slice(1):null,team_id:v[0]==="t"?+v.slice(1):null};});
+  const r=await sb.from("votes").insert(rows);
+  if(r.error){
+    if(r.error.code==="23505"){localStorage.setItem(votedKey(),"1");message("Você já votou","Só vale um voto por celular.");return;}
+    $("err").textContent=poll.status!=="open"?"A votação foi encerrada.":"Não foi possível enviar. Tente de novo.";$("send").disabled=false;return;
+  }
+  localStorage.setItem(votedKey(),"1");$("sub").textContent="Obrigado!";message("Voto enviado","Acompanhe o resultado no telão.");
+};
+boot();
+</script>
+</body>
+</html>
