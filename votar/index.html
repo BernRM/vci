@@ -49,6 +49,7 @@ const SUPABASE_URL="https://zdoayfqwyhngipdqoaiu.supabase.co";
 const SUPABASE_KEY="sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pollId=+new URLSearchParams(location.search).get("p");
 const CATS={mvp:["MVP","Quem jogou mais?"],troll:["Mais troll","Quem mais aprontou?"],nome:["Melhor nome","Qual equipe tem o melhor nome?"]};
 let poll=null,teams=[],players=[],choice={};
@@ -63,7 +64,7 @@ async function boot(){
   const [p,t,pl]=await Promise.all([sb.from("polls").select("*").eq("id",pollId).single(),sb.from("teams").select("*"),sb.from("players").select("*")]);
   if(p.error){message("Ops","Votação não encontrada.");return;}
   poll=p.data;teams=t.data;players=pl.data;
-  sb.channel("poll"+pollId).on("postgres_changes",{event:"UPDATE",schema:"public",table:"polls",filter:"id=eq."+pollId},e=>{poll=e.new;view();}).subscribe();
+  sb.channel("poll"+pollId).on("postgres_changes",{event:"UPDATE",schema:"public",table:"polls",filter:"id=eq."+pollId},e=>{const ch=e.new.status!==poll.status;poll=e.new;if(ch)view();}).subscribe();
   view();
 }
 
@@ -74,7 +75,7 @@ function view(){
   $("sub").textContent="Escolha um nome em cada categoria.";
   $("main").innerHTML=poll.categories.map(c=>{
     const [h,q]=CATS[c]||[c,""];
-    return `<div class="cat" data-c="${c}"><h2>${h}</h2><div class="q">${q}</div><div class="list"></div></div>`;
+    return `<div class="cat" data-c="${esc(c)}"><h2>${esc(h)}</h2><div class="q">${esc(q)}</div><div class="list"></div></div>`;
   }).join("");
   fillLists();
   $("bar").hidden=false; update();
@@ -87,12 +88,12 @@ async function fillLists(){
   document.querySelectorAll(".cat").forEach(el=>{
     const c=el.dataset.c, box=el.querySelector(".list");
     if(c==="nome"){
-      box.innerHTML=`<div class="opts">${tList.map(t=>`<button class="opt" data-v="t${t.id}" title="${t.name}">${t.name}</button>`).join("")}</div>`;
+      box.innerHTML=`<div class="opts">${tList.map(t=>`<button class="opt" data-v="t${t.id}" title="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>`;
     } else {
       const many=tList.length>2;
       box.innerHTML=(many?`<input class="search" placeholder="Buscar jogador" data-s>`:"")+tList.map(t=>{
         const ps=players.filter(p=>p.team_id===t.id);
-        return `<div class="grp"><div class="team">${t.name} · ${t.tag}</div><div class="opts">${ps.map(p=>`<button class="opt" data-v="p${p.id}" data-n="${p.nick.toLowerCase()}">${p.nick}</button>`).join("")}</div></div>`;
+        return `<div class="grp"><div class="team">${esc(t.name)} · ${esc(t.tag)}</div><div class="opts">${ps.map(p=>`<button class="opt" data-v="p${p.id}" data-n="${esc(p.nick.toLowerCase())}">${esc(p.nick)}</button>`).join("")}</div></div>`;
       }).join("");
     }
     box.addEventListener("click",e=>{const b=e.target.closest(".opt");if(!b)return;box.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel"));b.classList.add("sel");choice[c]=b.dataset.v;update();});

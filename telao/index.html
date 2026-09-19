@@ -164,6 +164,87 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .cd.hot{animation:pulse 1s ease-in-out infinite;color:var(--red)}
 @keyframes pulse{50%{transform:scale(1.07)}}
 
+/* ===== VETO ===== */
+.veto{position:absolute;left:4rem;right:4rem;top:11.5rem;bottom:7rem}
+.vhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2.4rem}
+.vt{font-size:5rem}
+.vturn{font-weight:700;font-size:2.4rem}
+.vturn b{color:var(--red)}
+.vturn.go{animation:pulse 1.4s ease-in-out infinite}
+.vcards{display:grid;gap:1.4rem;height:29rem}
+.vc{position:relative;border:.35rem solid var(--ink);background:var(--paper);display:flex;flex-direction:column;justify-content:space-between;padding:1.2rem;overflow:hidden}
+.vc .nm{position:relative;z-index:2;font-family:"Bebas Neue",Impact,sans-serif;font-size:4.8rem;line-height:.9;writing-mode:vertical-rl;transform:rotate(180deg);align-self:flex-start;white-space:nowrap}
+.vc .ix{font-weight:700;font-size:1.5rem;color:var(--gray)}
+.vc .st{font-weight:700;font-size:1.6rem;position:relative;z-index:2}
+.vc.ban{opacity:.5}
+.vc.ban .nm{text-decoration:line-through;text-decoration-thickness:.3rem}
+.vc.ban::after{content:"";position:absolute;left:-30%;right:-30%;top:44%;height:2rem;background:var(--red);transform:rotate(-58deg)}
+.vc.ban .st{color:var(--red)}
+.vc.pick{background:var(--ink);color:var(--paper);box-shadow:.7rem .7rem 0 var(--red)}
+.vc.pick .ix{color:var(--paper)}
+.vc.dec{background:var(--red);border-color:var(--red);color:#fff}
+.vc.dec .ix{color:#fff}
+.vc.hit{animation:hitc .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes hitc{0%{transform:scale(1.14) rotate(-2deg)}100%{transform:none}}
+.vc.hit.ban::after{animation:slash .45s .1s cubic-bezier(.75,0,.25,1) both}
+@keyframes slash{from{transform:rotate(-58deg) scaleX(0)}}
+.vdone{position:absolute;inset:0;background:var(--paper);display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;z-index:3}
+.veto.done .vdone{display:flex}
+.vdone .k{font-weight:700;font-size:2.8rem;color:var(--red)}
+.vdone .big{font-size:21rem;line-height:.85;margin-top:1rem}
+.vdone .order{display:flex;gap:5rem;margin-top:2.4rem;font-weight:700;font-size:2rem}
+.vdone .order b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:8rem;display:block;line-height:.9}
+.vdone .order>div:last-child b{color:var(--red)}
+.veto.done .vdone .k{animation:inD .6s .15s both}
+.veto.done .vdone .big{animation:stamp .9s .4s cubic-bezier(.2,.8,.2,1) both}
+.veto.done .vdone .order>div{animation:stamp .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 300ms + 400ms)}
+
+/* ===== CAMPEÃO ===== */
+.champ2{position:absolute;left:4rem;right:4rem;top:11rem;bottom:6rem;display:grid;grid-template-columns:1.35fr 1fr;align-items:center;gap:4rem;z-index:2}
+.c-left{min-width:0}
+.c-left .lbl{font-weight:700;font-size:2.6rem;color:var(--red)}
+.c-left .tag{font-size:22rem;white-space:nowrap}
+.c-left .name{font-weight:700;font-size:3.4rem}
+.c-left .roster{font-weight:600;font-size:2rem;color:var(--gray);margin-top:1.2rem}
+.c-left .res{font-weight:700;font-size:2rem;margin-top:1.6rem;border-top:.3rem solid var(--ink);padding-top:1rem;display:inline-block}
+.trophy{width:100%;max-height:38rem}
+.confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.cf{position:absolute;top:-6rem;left:var(--x);width:var(--w);height:var(--h);background:var(--c);animation:fall var(--d) linear var(--dl) infinite}
+.confetti.once .cf{animation-iteration-count:1;animation-fill-mode:both}
+@keyframes fall{to{transform:translateY(72rem) rotate(var(--r))}}
+
+/* ===== EFEITOS (troca de lado / vitória) ===== */
+.fx{position:absolute;inset:0;z-index:45;pointer-events:none;display:none;overflow:hidden}
+.fx.on{display:block}
+.sw-bg{position:absolute;inset:0;background:var(--paper);animation:swFade 2.7s both}
+.sw-band{position:absolute;left:-10%;right:-10%;height:12rem;display:flex;align-items:center;justify-content:center;gap:4rem;font-family:"Bebas Neue",Impact,sans-serif;font-size:9rem}
+.sw-band span{display:inline-block;transform:skewX(12deg)}
+.sw-band .sm{font-family:Rajdhani,sans-serif;font-weight:700;font-size:3.6rem}
+.sw-top{top:13rem;background:var(--ink);color:var(--paper);animation:swL 2.7s cubic-bezier(.75,0,.25,1) both}
+.sw-bot{top:25rem;background:var(--red);color:#fff;animation:swR 2.7s cubic-bezier(.75,0,.25,1) both}
+.sw-lbl{position:absolute;left:0;right:0;top:39rem;text-align:center;animation:swFade 2.7s both}
+.sw-lbl span{display:inline-block;background:var(--paper);border:.35rem solid var(--ink);padding:.6rem 2.4rem;font-weight:700;font-size:2.6rem}
+.sw-lbl b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:3.4rem;color:var(--red);margin-left:1rem}
+@keyframes swL{0%{transform:translateX(-115%) skewX(-12deg)}22%,78%{transform:translateX(0) skewX(-12deg)}100%{transform:translateX(115%) skewX(-12deg)}}
+@keyframes swR{0%{transform:translateX(115%) skewX(-12deg)}22%,78%{transform:translateX(0) skewX(-12deg)}100%{transform:translateX(-115%) skewX(-12deg)}}
+@keyframes swFade{0%,18%{opacity:0;transform:translateY(2rem)}28%,76%{opacity:1;transform:none}90%,100%{opacity:0}}
+.win-band{position:absolute;left:-10%;right:-10%;top:13rem;height:31rem;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:swL 3.4s cubic-bezier(.75,0,.25,1) both}
+.win-band>*{transform:skewX(12deg)}
+.win-band .k{font-weight:700;font-size:2.8rem;color:var(--red)}
+.win-band .t{font-family:"Bebas Neue",Impact,sans-serif;font-size:17rem;line-height:.85;text-shadow:.5rem .35rem 0 var(--red);animation:stamp .8s .55s cubic-bezier(.2,.8,.2,1) both}
+.win-band .s{font-weight:700;font-size:2.4rem;animation:inU .6s .9s both}
+.win-full{position:absolute;inset:0;background:var(--red);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:clipin 4.2s cubic-bezier(.75,0,.25,1) both}
+@keyframes clipin{0%{clip-path:polygon(0 0,0 0,0 100%,0 100%)}14%,86%{clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}100%{clip-path:polygon(100% 0,100% 0,100% 100%,100% 100%)}}
+.win-full .k{font-family:"Bebas Neue",Impact,sans-serif;font-size:6.4rem;color:var(--ink);letter-spacing:.3em;animation:inD .6s .4s both}
+.win-full .t{font-family:"Bebas Neue",Impact,sans-serif;font-size:25rem;line-height:.8;color:var(--paper);text-shadow:.6rem .45rem 0 var(--ink);animation:stamp .9s .6s cubic-bezier(.2,.8,.2,1) both}
+.win-full .s{font-weight:700;font-size:2.8rem;color:var(--paper);animation:inU .6s 1.1s both}
+.win-champ{position:absolute;inset:0;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:champfade 6.4s both}
+@keyframes champfade{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
+.win-champ .letters{font-family:"Bebas Neue",Impact,sans-serif;font-size:8rem;letter-spacing:.25em;color:var(--red);position:relative;z-index:2}
+.win-champ .letters span{display:inline-block;animation:stamp .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 130ms + 300ms)}
+.win-champ .t{font-family:"Bebas Neue",Impact,sans-serif;font-size:27rem;line-height:.8;text-shadow:.7rem .5rem 0 var(--red);animation:stamp 1s 1.4s cubic-bezier(.2,.8,.2,1) both;position:relative;z-index:2}
+.win-champ .s{font-weight:700;font-size:3rem;animation:inU .6s 2s both;position:relative;z-index:2}
+
 @media (prefers-reduced-motion:reduce){.wipe{display:none}*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -223,7 +304,43 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
     </div>
   </section>
 
+  <!-- VETO -->
+  <section class="screen" data-s="veto">
+    <div class="veto" id="veto">
+      <div class="vhead" data-a="d"><div class="vt bebas" id="vt-title"></div><div class="vturn" id="vt-turn"></div></div>
+      <div class="vcards" id="vt-cards"></div>
+      <div class="vdone" id="vt-done"></div>
+    </div>
+  </section>
+
+  <!-- CAMPEÃO -->
+  <section class="screen" data-s="champion">
+    <div class="confetti" id="ch-conf"></div>
+    <div class="champ2">
+      <div class="c-left">
+        <div class="lbl" data-a="d">Campeão · VCI 2ª edição</div>
+        <div class="tag bebas misreg" id="ch-tag" data-a="s" style="--i:1">—</div>
+        <div class="name" id="ch-name" data-a="u" style="--i:2"></div>
+        <div class="roster" id="ch-roster" data-a="u" style="--i:3"></div>
+        <div class="res" id="ch-res" data-a="u" style="--i:4"></div>
+      </div>
+      <div data-a="r" style="--i:2">
+        <svg class="trophy" viewBox="0 0 200 240" aria-hidden="true">
+          <g transform="translate(7 5)" fill="#D7263D"><path d="M50 20H150V70C150 115 125 140 100 140C75 140 50 115 50 70Z"/><rect x="90" y="138" width="20" height="40"/><rect x="60" y="178" width="80" height="18"/></g>
+          <path d="M50 20H150V70C150 115 125 140 100 140C75 140 50 115 50 70Z" fill="#0E0E10"/>
+          <path d="M50 36H24C21 76 37 96 58 101M150 36H176C179 76 163 96 142 101" fill="none" stroke="#0E0E10" stroke-width="10"/>
+          <rect x="90" y="138" width="20" height="40" fill="#0E0E10"/>
+          <rect x="60" y="178" width="80" height="18" fill="#0E0E10"/>
+          <rect x="44" y="196" width="112" height="28" fill="#0E0E10"/>
+          <text x="100" y="88" text-anchor="middle" font-family="Bebas Neue, Impact, sans-serif" font-size="46" fill="#F2F0EB">VCI</text>
+          <text x="100" y="216" text-anchor="middle" font-family="Rajdhani, sans-serif" font-weight="700" font-size="14" fill="#F2F0EB">2ª EDIÇÃO</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
   <footer class="foot"><span>JACITEC 2026 · Ifes Cachoeiro · Lab B2</span><span id="clock"></span></footer>
+  <div class="fx" id="fx"></div>
   <div class="offline" id="offline">sem conexão</div>
 </div>
 
@@ -236,6 +353,7 @@ const VOTE_URL     = "https://bernrm.github.io/vci/votar/";
 
 const CAT_LABEL = {mvp:"MVP", troll:"Mais troll", nome:"Melhor nome"};
 const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const DEMO = new URLSearchParams(location.search).has("demo");
 let db = {teams:[],players:[],matches:[],polls:[],votes:[],state:{screen:"next"}};
 let localScreen = null;
@@ -255,6 +373,7 @@ function showScreen(scr){
   const apply=()=>{
     document.querySelectorAll(".screen").forEach(s=>{
       const on=s.dataset.s===scr; s.classList.toggle("on",on); s.classList.remove("enter");
+      if(on && scr==="champion") confetti($("ch-conf"),45,false);
       if(on){ void s.offsetWidth; s.classList.add("enter"); clearTimeout(s._t); s._t=setTimeout(()=>s.classList.remove("enter"),1800); }
     });
   };
@@ -278,9 +397,7 @@ async function loadAll(){
 }
 async function loadVotes(){
   if(DEMO) return;
-  const pid = currentPollId();
-  if(!pid){ db.votes=[]; return; }
-  const v = await sb.from("votes").select("poll_id,category,player_id,team_id").eq("poll_id",pid);
+  const v = await sb.from("votes").select("poll_id,category,player_id,team_id");
   if(!v.error) db.votes=v.data;
 }
 function currentPollId(){
@@ -318,9 +435,9 @@ function render(){
   const scr = localScreen || db.state.screen || "next";
   showScreen(scr);
   const m = db.matches.find(x=>x.id===db.state.match_id);
-  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação da partida", next:matchLabel(m), final:"Encerramento"}[scr];
+  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final"}[scr];
   setText("phase", phase);
-  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal();
+  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); handleEvent();
 }
 
 function renderLive(m){
@@ -336,14 +453,14 @@ function renderLive(m){
   const sa=$("l-sideA"), sbb=$("l-sideB");
   sa.textContent = aAtk?"Ataque":"Defesa"; sa.classList.toggle("atk",aAtk);
   sbb.textContent = aAtk?"Defesa":"Ataque"; sbb.classList.toggle("atk",!aAtk);
-  if(same && pv.side!==m.side_a){ replay($("l-sideA"),"flip"); replay($("l-sideB"),"flip"); }
+  if(same && pv.side!==m.side_a){ replay($("l-sideA"),"flip"); replay($("l-sideB"),"flip"); if(shown==="live") playSwap(m); }
   renderLive.prev={id:m.id,a:m.score_a,b:m.score_b,side:m.side_a};
   setText("l-map", m.map||"—");
   const ser=$("l-series");
   if(m.best_of>1){
     const need=Math.ceil(m.best_of/2);
     const pips=(n)=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");
-    ser.innerHTML=`${A.tag||"A"} <span class="pips">${pips(m.series_a)}</span> &nbsp; MD${m.best_of} &nbsp; <span class="pips">${pips(m.series_b)}</span> ${B.tag||"B"}`;
+    ser.innerHTML=`${esc(A.tag||"A")} <span class="pips">${pips(m.series_a)}</span> &nbsp; MD${m.best_of} &nbsp; <span class="pips">${pips(m.series_b)}</span> ${esc(B.tag||"B")}`;
   } else ser.textContent="Partida única";
 }
 
@@ -363,7 +480,7 @@ function renderBracket(){
         if(pv && m.winner===tid && pv.win[m.id]!==m.winner) cls+=" sweep";
         if(pv && !(pv.teams[m.id]||[]).includes(tid)) cls+=" arrive";
         const s = m.status==="done"||m.status==="live" ? (m.best_of>1?sc.series:sc.score) : "";
-        return `<div class="row ${cls}"><span>${t.tag}</span><span class="s">${s}</span></div>`;
+        return `<div class="row ${cls}"><span>${esc(t.tag)}</span><span class="s">${s}</span></div>`;
       };
       html+=`<div class="m ${live?"live":""}">${live?'<span class="flag">AO VIVO</span>':""}${row(m.team_a,{score:m.score_a,series:m.series_a})}${row(m.team_b,{score:m.score_b,series:m.series_b})}</div>`;
     });
@@ -395,7 +512,7 @@ function renderVote(){
   box.classList.toggle("isclosed", poll.status!=="open");
   const sig=poll.id+"|"+poll.categories.join(",");
   if(voteSig!==sig){
-    cats.innerHTML=poll.categories.map(cat=>`<div class="cat" data-cat="${cat}"><h3 class="bebas">${CAT_LABEL[cat]||cat}<span class="tot"></span></h3><div class="bars"><p class="wait" style="font-weight:600;font-size:2rem;color:var(--gray)">Aguardando votos…</p></div><div class="reveal"></div></div>`).join("");
+    cats.innerHTML=poll.categories.map(cat=>`<div class="cat" data-cat="${esc(cat)}"><h3 class="bebas">${esc(CAT_LABEL[cat]||cat)}<span class="tot"></span></h3><div class="bars"><p class="wait" style="font-weight:600;font-size:2rem;color:var(--gray)">Aguardando votos…</p></div><div class="reveal"></div></div>`).join("");
     voteSig=sig;
   }
   poll.categories.forEach(cat=>{
@@ -423,7 +540,7 @@ function renderVote(){
       if(dy) b.animate([{transform:`translateY(${dy}px)`},{transform:"none"}],{duration:550,easing:"cubic-bezier(.2,.8,.2,1)"});
     });
     const w=rows[0];
-    el.querySelector(".reveal").innerHTML = w ? `<div class="big bebas misreg">${voteLabel(w[0]).split(" · ")[0]}</div><div class="sub">${w[1]} de ${total} votos</div>` : `<div class="sub">Sem votos</div>`;
+    el.querySelector(".reveal").innerHTML = w ? `<div class="big bebas misreg">${esc(voteLabel(w[0]).split(" · ")[0])}</div><div class="sub">${w[1]} de ${total} votos</div>` : `<div class="sub">Sem votos</div>`;
     const big=el.querySelector(".reveal .big"); if(big && poll.status==="revealed") requestAnimationFrame(()=>fit(big,7.5));
   });
 }
@@ -452,10 +569,105 @@ function renderFinal(){
     else if(g.status!=="revealed") { name="?"; d="Revelação em breve"; }
     const title = cat==="troll" ? "Troféu Troll" : (CAT_LABEL[cat]||cat);
     const st = g.status==="revealed" && !renderFinal.wasRevealed ? " stamp" : "";
-    return `<div class="award"><div class="t">${title}</div><div class="v bebas${st}">${name}</div><div class="d">${d}</div></div>`;
+    return `<div class="award"><div class="t">${esc(title)}</div><div class="v bebas${st}">${esc(name)}</div><div class="d">${esc(d)}</div></div>`;
   }).join("");
   renderFinal.wasRevealed = g.status==="revealed";
   requestAnimationFrame(()=>aw.querySelectorAll(".v").forEach(v=>fit(v,5.4)));
+}
+
+
+/* ---------- veto de mapas ---------- */
+function vetoSteps(n,bo){
+  if(n<1) return [];
+  if(bo>1){ const s=["ban","ban","pick","pick"]; while(s.length<n-1) s.push("ban"); return s.slice(0,n-1).concat("decider"); }
+  return Array(n-1).fill("ban").concat("decider");
+}
+const vetoTeamAt=(i,first)=> i%2===0 ? first : (first==="a"?"b":"a");
+let vetoPrev=null, vetoDoneT=null;
+function renderVeto(m){
+  const box=$("veto"); if(!m) return;
+  const pool=db.state.map_pool||[]; const A=team(m.team_a)||{}, B=team(m.team_b)||{};
+  const tagOf=k=>k==="a"?(A.tag||"A"):(B.tag||"B");
+  setText("vt-title",`Veto de mapas · ${A.tag||"?"} x ${B.tag||"?"}`);
+  const veto=m.veto||[], byMap={}; veto.forEach(v=>byMap[v.map]=v);
+  const steps=vetoSteps(pool.length,m.best_of), done=pool.length>0 && veto.length>=pool.length;
+  const turn=$("vt-turn");
+  if(!m.veto_first){ turn.textContent="Sorteio de quem começa"; turn.classList.remove("go"); }
+  else if(!done){ const i=veto.length; turn.innerHTML=`Vez de <b>${esc(tagOf(vetoTeamAt(i,m.veto_first)))}</b>: ${steps[i]==="pick"?"escolher":"banir"}`; turn.classList.add("go"); }
+  else { turn.textContent="Veto concluído"; turn.classList.remove("go"); }
+  const newest = vetoPrev && vetoPrev.id===m.id && veto.length>vetoPrev.n ? veto.slice(vetoPrev.n).map(v=>v.map) : [];
+  const cards=$("vt-cards"); cards.style.gridTemplateColumns=`repeat(${Math.max(pool.length,1)},minmax(0,1fr))`;
+  cards.innerHTML=pool.map((mp,i)=>{
+    const v=byMap[mp]; let cls="", st="";
+    if(v){ if(v.action==="ban"){cls="ban";st="BAN · "+esc(tagOf(v.team));} else if(v.action==="pick"){cls="pick";st="PICK · "+esc(tagOf(v.team));} else {cls="dec";st="DECISIVO";} }
+    if(newest.includes(mp)) cls+=" hit";
+    return `<div class="vc ${cls}" data-a="u" style="--i:${i}"><div class="ix">${String(i+1).padStart(2,"0")}</div><div class="nm">${esc(mp)}</div><div class="st">${st}</div></div>`;
+  }).join("");
+  const order = m.best_of>1 ? veto.filter(v=>v.action!=="ban") : veto.filter(v=>v.action==="decider");
+  $("vt-done").innerHTML = m.best_of>1
+    ? `<div class="k">Mapas da série</div><div class="order">${order.map((v,i)=>`<div style="--i:${i}">Mapa ${i+1}<b>${esc(v.map)}</b>${v.team?"escolha de "+esc(tagOf(v.team)):"decisivo"}</div>`).join("")}</div>`
+    : `<div class="k">Mapa da partida</div><div class="big bebas misreg">${esc(order[0]?order[0].map:"")}</div>`;
+  if(!done){ clearTimeout(vetoDoneT); vetoDoneT=null; box.classList.remove("done"); }
+  else if(!box.classList.contains("done") && !vetoDoneT){
+    const delay = (vetoPrev && vetoPrev.id===m.id && !vetoPrev.done) ? 1800 : 0;
+    vetoDoneT=setTimeout(()=>{ box.classList.add("done"); vetoDoneT=null; }, delay);
+  }
+  vetoPrev={id:m.id,n:veto.length,done};
+}
+
+/* ---------- campeão ---------- */
+function renderChampion(){
+  const R=maxRound(); const fm=db.matches.find(x=>x.bracket_round===R);
+  const ch=fm&&fm.winner?team(fm.winner):null;
+  setText("ch-tag",ch?ch.tag:"—"); setText("ch-name",ch?ch.name:"A definir");
+  setText("ch-roster",ch?db.players.filter(p=>p.team_id===ch.id&&!p.is_sub).map(p=>p.nick).join(" · "):"");
+  if(fm&&ch){
+    const wa=fm.winner===fm.team_a, opp=team(wa?fm.team_b:fm.team_a)||{};
+    const sc = fm.best_of>1 ? `${wa?fm.series_a:fm.series_b}–${wa?fm.series_b:fm.series_a}` : `${wa?fm.score_a:fm.score_b}–${wa?fm.score_b:fm.score_a}`;
+    setText("ch-res",`Venceu ${opp.tag||""} por ${sc} na final`);
+  } else setText("ch-res","");
+  requestAnimationFrame(()=>fit($("ch-tag"),22));
+}
+function confetti(el,n,once,cols){
+  if(!el||REDUCED) return;
+  cols=cols||["#D7263D","#0E0E10"]; let s="";
+  for(let i=0;i<n;i++){
+    const w=(0.5+Math.random()*1.4).toFixed(2), hh=(0.9+Math.random()*2.4).toFixed(2);
+    s+=`<i class="cf" style="--x:${(Math.random()*100).toFixed(1)}%;--w:${w}rem;--h:${hh}rem;--c:${cols[i%cols.length]};--d:${(3.2+Math.random()*4).toFixed(2)}s;--dl:${(once?Math.random()*1.4:-Math.random()*7).toFixed(2)}s;--r:${Math.round(300+Math.random()*900)}deg"></i>`;
+  }
+  el.innerHTML=s; el.classList.toggle("once",!!once);
+}
+
+/* ---------- efeitos ---------- */
+function playFx(html,ms){ const f=$("fx"); f.innerHTML=html; f.className="fx on"; clearTimeout(f._t); f._t=setTimeout(()=>{f.className="fx";f.innerHTML="";},ms); }
+function playSwap(m){
+  if(REDUCED) return;
+  const A=team(m.team_a)||{}, B=team(m.team_b)||{}, aAtk=m.side_a==="ATK";
+  playFx(`<div class="sw-bg"></div><div class="sw-band sw-top"><span>${esc(A.tag||"A")}</span><span class="sm">agora no ${aAtk?"ataque":"defesa"}</span></div>
+          <div class="sw-band sw-bot"><span class="sm">agora na ${aAtk?"defesa":"ataque"}</span><span>${esc(B.tag||"B")}</span></div>
+          <div class="sw-lbl"><span>Troca de lado${m.map?`<b>${esc(m.map)}</b>`:""}</span></div>`,2800);
+}
+let lastEvent;
+function handleEvent(){
+  const at=db.state.event_at||null;
+  if(lastEvent===undefined){ lastEvent=at; return; }
+  if(!at||at===lastEvent) return; lastEvent=at;
+  if(Date.now()-new Date(at).getTime()>20000) return;
+  const ev=db.state.event||{}; if(ev.type==="win") playWin(ev);
+}
+function playWin(ev){
+  if(REDUCED) return;
+  const t=team(ev.team_id)||{}; const m=db.matches.find(x=>x.id===ev.match_id);
+  const d = m ? maxRound()-m.bracket_round : 2;
+  if(d===0){
+    playFx(`<div class="win-champ"><div class="confetti" id="fxc"></div><div class="letters">${[..."CAMPEÃO"].map((c,i)=>`<span style="--i:${i}">${c}</span>`).join("")}</div><div class="t">${esc(t.tag||"")}</div><div class="s">${esc(t.name||"")} · Valorant Cup Ifes 2ª edição</div></div>`,6500);
+    confetti($("fxc"),110,true,["#D7263D","#F2F0EB","#D7263D","#8A8780"]);
+  } else if(d===1){
+    playFx(`<div class="win-full"><div class="k">Finalista</div><div class="t">${esc(t.tag||"")}</div><div class="s">${esc(t.name||"")} está na final</div></div>`,4300);
+  } else {
+    const nx = d===2 ? "semifinal" : "próxima fase";
+    playFx(`<div class="win-band"><div class="k">Vitória</div><div class="t">${esc(t.tag||"")}</div><div class="s">${esc(t.name||"")} avança para a ${nx}</div></div>`,3500);
+  }
 }
 
 /* ---------- relógio e contagem ---------- */
@@ -471,7 +683,7 @@ function tick(){
 setInterval(tick,500);
 
 /* ---------- plano B: teclado ---------- */
-const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final"};
+const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final","6":"veto","7":"champion"};
 document.addEventListener("keydown",e=>{
   if(KEYS[e.key]){ localScreen=KEYS[e.key]; render(); }
   if(e.key==="0"){ localScreen=null; render(); }
@@ -484,6 +696,10 @@ document.addEventListener("keydown",e=>{
     if(e.key==="s"&&m){ m.side_a=m.side_a==="ATK"?"DEF":"ATK"; render(); }
     if(e.key==="v"){ const ps=[1,2,3,4,5,36,37,38,39,40]; db.votes.push({poll_id:1,category:Math.random()<.5?"mvp":"troll",player_id:ps[Math.floor(Math.random()*ps.length)]}); renderVote(); }
     if(e.key==="w"&&m&&!m.winner){ m.winner=m.team_a; m.status="done"; const n=db.matches.find(x=>x.bracket_round===m.bracket_round+1&&x.slot===Math.ceil(m.slot/2)); if(n) n[m.slot%2?"team_a":"team_b"]=m.team_a; render(); }
+    if(e.key==="j"&&m){ playWin({team_id:m.team_a,match_id:1}); }
+    if(e.key==="k"){ playWin({team_id:1,match_id:5}); }
+    if(e.key==="l"){ const f=db.matches.find(x=>x.bracket_round===3); f.team_a=1; f.team_b=4; f.winner=1; f.series_a=2; f.series_b=1; f.status="done"; playWin({team_id:1,match_id:f.id}); render(); }
+    if(e.key==="n"&&m){ const pool=db.state.map_pool; if(!m.veto_first) m.veto_first="a"; const st=vetoSteps(pool.length,m.best_of); const i=m.veto.length; if(i<pool.length){ const left=pool.filter(p=>!m.veto.some(v=>v.map===p)); m.veto.push({map:left[Math.floor(Math.random()*left.length)],action:st[i],team:vetoTeamAt(i,m.veto_first)}); const l2=pool.filter(p=>!m.veto.some(v=>v.map===p)); if(l2.length===1) m.veto.push({map:l2[0],action:"decider",team:null}); } else { m.veto=[]; } render(); }
     if(e.key==="x"){ const p=db.polls[0]; p.status=p.status==="revealed"?"open":"revealed"; renderVote(); }
   }
 });
@@ -505,7 +721,8 @@ function demoData(){
   const votes=[]; const add=(c,p,n)=>{for(let i=0;i<n;i++)votes.push({poll_id:1,category:c,player_id:p});};
   add("mvp",1,11);add("mvp",3,7);add("mvp",38,4);add("mvp",2,2);add("troll",39,9);add("troll",5,6);add("troll",36,3);
   const q=new URLSearchParams(location.search);
-  return {teams,players,matches,polls,votes,state:{screen:q.get("s")||"live",match_id:+(q.get("m")||2),poll_id:1,countdown_to:new Date(Date.now()+272000).toISOString()}};
+  matches.forEach(x=>{x.veto=[];x.veto_first=null;});
+  return {teams,players,matches,polls,votes,state:{screen:q.get("s")||"live",match_id:+(q.get("m")||2),poll_id:1,countdown_to:new Date(Date.now()+272000).toISOString(),map_pool:["Abyss","Ascent","Bind","Corrode","Haven","Lotus","Sunset"]}};
 }
 
 /* ---------- início ---------- */

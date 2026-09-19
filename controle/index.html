@@ -28,7 +28,7 @@ button,select,input{font:inherit;color:inherit}
 .btn.on{background:var(--ink);color:var(--paper);box-shadow:4px 4px 0 var(--red)}
 .btn:disabled{opacity:.35}
 .grid{display:grid;gap:8px}
-.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g5{grid-template-columns:repeat(4,1fr)}
 .g5 .btn{padding:8px 2px;font-size:15px}
 select,input[type=text],input[type=email],input[type=password],input[type=number]{width:100%;border:3px solid var(--ink);background:#fff;padding:10px;min-height:48px;font-size:17px;border-radius:0}
 label{display:block;font-size:14px;color:var(--gray);margin:10px 0 4px}
@@ -78,7 +78,9 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" data-s="bracket">Chave</button>
     <button class="btn" data-s="vote">Votação</button>
     <button class="btn" data-s="next">Próxima</button>
-    <button class="btn" data-s="final">Final</button>
+    <button class="btn" data-s="final">Encerr.</button>
+    <button class="btn" data-s="veto">Veto</button>
+    <button class="btn" data-s="champion">Campeão</button>
   </div>
 </section>
 
@@ -89,6 +91,16 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" id="startBtn">Marcar ao vivo</button>
     <button class="btn" id="resetBtn">Zerar placar</button>
   </div>
+</section>
+
+<section>
+  <h2>Veto de mapas <span id="vetoInfo"></span></h2>
+  <label>Quem começa (cara ou coroa)</label>
+  <div class="grid g2"><button class="btn" id="vfA">A</button><button class="btn" id="vfB">B</button></div>
+  <div class="grid g3" id="vetoMaps" style="margin-top:8px"></div>
+  <div class="grid g2" style="margin-top:8px"><button class="btn" id="vUndo">Desfazer</button><button class="btn" id="vReset">Recomeçar</button></div>
+  <details style="margin-top:8px"><summary>Pool de mapas (confira o pool atual do competitivo)</summary><div class="grid g3" id="poolEd" style="margin-top:6px"></div></details>
+  <p class="hint">Escolher quem começa já leva o telão pra tela de veto. Toque nos mapas na ordem; o último vira o decisivo sozinho e o mapa da partida é preenchido.</p>
 </section>
 
 <section>
@@ -161,6 +173,10 @@ const SUPABASE_URL="https://zdoayfqwyhngipdqoaiu.supabase.co";
 const SUPABASE_KEY="sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ALL_MAPS=["Abyss","Ascent","Bind","Breeze","Corrode","Fracture","Haven","Icebox","Lotus","Pearl","Split","Sunset"];
+function vetoSteps(n,bo){ if(n<1)return[]; if(bo>1){const s=["ban","ban","pick","pick"];while(s.length<n-1)s.push("ban");return s.slice(0,n-1).concat("decider");} return Array(n-1).fill("ban").concat("decider"); }
+const vetoTeamAt=(i,first)=>i%2===0?first:(first==="a"?"b":"a");
 let db={teams:[],players:[],matches:[],polls:[],votes:[],state:{}};
 
 function toast(msg,err){const t=$("toast");t.textContent=msg;t.className="toast on"+(err?" err":"");clearTimeout(t._h);t._h=setTimeout(()=>t.className="toast",2200);}
@@ -181,6 +197,7 @@ $("logout").onclick=async()=>{await sb.auth.signOut();location.reload();};
 
 async function showApp(user){
   $("appView").hidden=false; $("who").textContent=user.email;
+  const adm=await sb.rpc("is_admin"); if(!adm.error && adm.data!==true) toast("Este usuário não tem permissão de admin",true);
   await loadAll(); subscribe();
 }
 
@@ -213,8 +230,8 @@ const team=id=>db.teams.find(t=>t.id===id);
 const cur=()=>db.matches.find(m=>m.id===db.state.match_id);
 const maxRound=()=>Math.max(1,...db.matches.map(m=>m.bracket_round));
 const rName=r=>["Final","Semi","Quartas","Oitavas"][maxRound()-r]||("Fase "+r);
-const mLabel=m=>`${rName(m.bracket_round)} ${m.slot} · ${(team(m.team_a)||{}).tag||"?"} x ${(team(m.team_b)||{}).tag||"?"}${m.status==="done"?" ✓":m.status==="live"?" ●":""}`;
-const setState=(patch,msg)=>run(sb.from("display_state").update({...patch,updated_at:new Date().toISOString()}).eq("id",1),msg);
+const mLabel=m=>esc(`${rName(m.bracket_round)} ${m.slot} · ${(team(m.team_a)||{}).tag||"?"} x ${(team(m.team_b)||{}).tag||"?"}${m.status==="done"?" ✓":m.status==="live"?" ●":""}`);
+const setState=(patch,msg)=>{Object.assign(db.state,patch);return run(sb.from("display_state").update({...patch,updated_at:new Date().toISOString()}).eq("id",1).select(),msg).then(r=>{if(r&&!r.data.length)toast("Sem permissão para alterar",true);return r;});};
 const setMatch=(patch,msg)=>{const m=cur();if(!m){toast("Escolha a partida",true);return;}Object.assign(m,patch);render();return run(sb.from("matches").update(patch).eq("id",m.id),msg);};
 
 /* ---------- render ---------- */
@@ -234,8 +251,19 @@ function render(){
   $("winA").textContent="Vitória "+(A.tag||"A");$("winB").textContent="Vitória "+(B.tag||"B");
   $("mapWinA").textContent="Mapa p/ "+(A.tag||"A");$("mapWinB").textContent="Mapa p/ "+(B.tag||"B");
   const bo=m&&m.best_of>1; $("seriesBox").hidden=!bo;
-  if(bo){const need=Math.ceil(m.best_of/2);const p=n=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");$("pips").innerHTML=`${A.tag||"A"} ${p(m.series_a)} &nbsp;·&nbsp; ${p(m.series_b)} ${B.tag||"B"}`;}
-  renderPoll(); renderBracketEd();
+  if(bo){const need=Math.ceil(m.best_of/2);const p=n=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");$("pips").innerHTML=`${esc(A.tag||"A")} ${p(m.series_a)} &nbsp;·&nbsp; ${p(m.series_b)} ${esc(B.tag||"B")}`;}
+  renderPoll(); renderBracketEd(); renderVetoCtl();
+}
+function renderVetoCtl(){
+  const m=cur(), pool=db.state.map_pool||[]; const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};
+  $("vfA").textContent="Começa "+(A.tag||"A"); $("vfB").textContent="Começa "+(B.tag||"B");
+  $("vfA").classList.toggle("on",!!m&&m.veto_first==="a"); $("vfB").classList.toggle("on",!!m&&m.veto_first==="b");
+  const veto=m?(m.veto||[]):[], used=new Map(veto.map(v=>[v.map,v])), i=veto.length, steps=vetoSteps(pool.length,m?m.best_of:1), done=pool.length>0&&i>=pool.length;
+  const tagOf=k=>k==="a"?(A.tag||"A"):(B.tag||"B");
+  $("vetoInfo").textContent=!m?"":!m.veto_first?"sorteie quem começa":done?"concluído":`vez de ${tagOf(vetoTeamAt(i,m.veto_first))}: ${steps[i]==="pick"?"escolher":"banir"}`;
+  $("vetoMaps").innerHTML=pool.map(mp=>{const v=used.get(mp);const lab=v?(v.action==="ban"?" · ban":v.action==="pick"?" · pick":" · dec"):"";
+    return `<button class="btn ${v&&v.action!=="ban"?"on":""}" data-map="${esc(mp)}" ${v||!m||!m.veto_first||done?"disabled":""}>${esc(mp)}${lab}</button>`;}).join("");
+  $("poolEd").innerHTML=ALL_MAPS.map(mp=>`<button class="btn ${pool.includes(mp)?"on":""}" data-pool="${mp}" style="min-height:40px;font-size:15px">${mp}</button>`).join("");
 }
 function renderPoll(){
   const p=db.polls.find(x=>x.id===db.state.poll_id);
@@ -245,12 +273,27 @@ function renderPoll(){
   $("counts").innerHTML=p?p.categories.map(c=>`<div>${labels[c]||c}<b>${db.votes.filter(v=>v.category===c).length} votos</b></div>`).join(""):"";
 }
 function renderBracketEd(){
-  const opts=sel=>`<option value="">A definir</option>`+db.teams.map(t=>`<option value="${t.id}" ${t.id===sel?"selected":""}>${t.tag}</option>`).join("");
+  const opts=sel=>`<option value="">A definir</option>`+db.teams.map(t=>`<option value="${t.id}" ${t.id===sel?"selected":""}>${esc(t.tag)}</option>`).join("");
   $("bracketEd").innerHTML=db.matches.map(m=>`<div class="mrow"><span>${rName(m.bracket_round)} ${m.slot}</span><select data-m="${m.id}" data-k="team_a">${opts(m.team_a)}</select><select data-m="${m.id}" data-k="team_b">${opts(m.team_b)}</select></div>`).join("")
    +`<p class="hint">Mudou aqui, muda no telão. Use pra montar a chave depois do sorteio.</p>`;
 }
 
 /* ---------- ações ---------- */
+$("vfA").onclick=()=>vetoFirst("a");$("vfB").onclick=()=>vetoFirst("b");
+async function vetoFirst(k){const m=cur();if(!m)return;await setMatch({veto_first:k},"Veto: começa "+(k==="a"?(team(m.team_a)||{}).tag:(team(m.team_b)||{}).tag));await setState({screen:"veto"});render();}
+$("vetoMaps").onclick=async e=>{
+  const b=e.target.closest("[data-map]");if(!b||b.disabled)return;const m=cur();const pool=db.state.map_pool||[];
+  const veto=[...(m.veto||[])];const i=veto.length;const steps=vetoSteps(pool.length,m.best_of);
+  veto.push({map:b.dataset.map,action:steps[i],team:vetoTeamAt(i,m.veto_first)});
+  const left=pool.filter(p=>!veto.some(v=>v.map===p));const patch={veto};
+  if(left.length===1){veto.push({map:left[0],action:"decider",team:null});const order=veto.filter(v=>v.action!=="ban");patch.map=m.best_of>1?order[0].map:left[0];}
+  await setMatch(patch);
+};
+$("vUndo").onclick=()=>{const m=cur();if(!m||!(m.veto||[]).length)return;let veto=[...m.veto];if(veto[veto.length-1].action==="decider")veto.pop();veto.pop();setMatch({veto,map:null},"Desfeito");};
+$("vReset").onclick=()=>{const m=cur();if(m&&confirm("Recomeçar o veto desta partida?"))setMatch({veto:[],veto_first:null,map:null},"Veto zerado");};
+$("poolEd").onclick=e=>{const b=e.target.closest("[data-pool]");if(!b)return;let pool=[...(db.state.map_pool||[])];const mp=b.dataset.pool;
+  pool=pool.includes(mp)?pool.filter(x=>x!==mp):ALL_MAPS.filter(x=>pool.includes(x)||x===mp);setState({map_pool:pool},"Pool: "+pool.length+" mapas");render();};
+
 $("screens").onclick=e=>{const s=e.target.dataset.s;if(!s)return;db.state.screen=s;render();setState({screen:s});};
 $("matchSel").onchange=e=>{db.state.match_id=+e.target.value;render();setState({match_id:+e.target.value},"Partida selecionada");};
 $("startBtn").onclick=()=>setMatch({status:"live"},"Partida ao vivo");
@@ -262,7 +305,8 @@ document.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>{
 $("swapBtn").onclick=()=>{const m=cur();if(m)setMatch({side_a:m.side_a==="ATK"?"DEF":"ATK"});};
 $("mapIn").onchange=e=>setMatch({map:e.target.value.trim()||null},"Mapa atualizado");
 $("mapWinA").onclick=()=>mapWin("a");$("mapWinB").onclick=()=>mapWin("b");
-function mapWin(k){const m=cur();if(!m)return;const f="series_"+k;setMatch({[f]:m[f]+1,score_a:0,score_b:0,map:null},"Mapa registrado");}
+function mapWin(k){const m=cur();if(!m)return;const f="series_"+k;const played=m.series_a+m.series_b+1;const order=(m.veto||[]).filter(v=>v.action!=="ban");
+  setMatch({[f]:m[f]+1,score_a:0,score_b:0,map:order[played]?order[played].map:null},"Mapa registrado");}
 
 $("winA").onclick=()=>finish("a");$("winB").onclick=()=>finish("b");
 async function finish(k){
@@ -270,11 +314,14 @@ async function finish(k){
   if(!t){toast("Time não definido",true);return;}
   if(!confirm(`Confirmar vitória de ${t.tag}?`))return;
   await setMatch({winner:w,status:"done"},`${t.tag} venceu`);
+  const isFinal=m.bracket_round===maxRound();
+  await setState({event:{type:"win",match_id:m.id,team_id:w},event_at:new Date().toISOString(),...(isFinal?{screen:"champion"}:{})});
   const nxt=db.matches.find(x=>x.bracket_round===m.bracket_round+1&&x.slot===Math.ceil(m.slot/2));
   if(nxt){const key=m.slot%2===1?"team_a":"team_b";await run(sb.from("matches").update({[key]:w}).eq("id",nxt.id),`${t.tag} avançou`);}
 }
 
 async function createPoll(matchId,title,cats){
+  await run(sb.from("polls").update({status:"closed"}).eq("status","open"));
   const r=await run(sb.from("polls").insert({match_id:matchId,title,categories:cats,status:"open"}).select().single());
   if(!r)return; await setState({poll_id:r.data.id,screen:"vote"},"Votação aberta no telão");
 }
