@@ -140,7 +140,7 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
   <h2>Palpites <span id="predStatus"></span></h2>
   <div class="grid g2"><button class="btn dark" id="predOpen">Abrir palpites</button><button class="btn" id="predLock">Encerrar</button></div>
   <div class="counts" id="predCounts"></div>
-  <p class="hint">Abrir já mostra a tela de palpites no telão. Marcar a partida como ao vivo encerra os palpites sozinho.</p>
+  <p class="hint">Abrir já mostra a tela de palpites no telão. Os palpites se encerram sozinhos quando a partida vai ao vivo <b>ou quando o placar muda</b> — assim ninguém palpita já sabendo o resultado parcial. Você é avisado quando isso acontece.</p>
   <details style="margin-top:8px"><summary>Ranking de oráculos (moderar apelidos)</summary><div id="oracList" style="margin-top:6px"></div></details>
 </section>
 
@@ -485,11 +485,14 @@ $("sbClear").onclick=()=>{ const m=cur(); if(!m||!m.scoreboard) return;
 
 $("screens").onclick=e=>{const s=e.target.dataset.s;if(!s)return;db.state.screen=s;render();setState({screen:s});};
 $("matchSel").onchange=e=>{db.state.match_id=+e.target.value;render();setState({match_id:+e.target.value},"Partida selecionada");};
-$("startBtn").onclick=()=>{const m=cur();setMatch({status:"live",...(m&&m.pred_status==="open"?{pred_status:"locked"}:{})},"Partida ao vivo");};
+$("startBtn").onclick=()=>{const m=cur();const fecha=!!m&&m.pred_status==="open";setMatch({status:"live",...(fecha?{pred_status:"locked"}:{})},fecha?"Ao vivo · palpites encerrados":"Partida ao vivo");};
 $("resetBtn").onclick=()=>{if(confirm("Zerar os rounds desta partida?"))setMatch({score_a:0,score_b:0},"Placar zerado");};
 document.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>{
   const m=cur();if(!m)return;const [k,d]=b.dataset.sc.split(",");const f="score_"+k;
-  const v=Math.max(0,m[f]+ +d); setMatch({[f]:v, status:m.status==="pending"?"live":m.status, ...(m.pred_status==="open"?{pred_status:"locked"}:{})});
+  const v=Math.max(0,m[f]+ +d); const fecha=m.pred_status==="open";
+  // fechar e' proposital (ninguem palpita sabendo o placar), mas antes era silencioso
+  setMatch({[f]:v, status:m.status==="pending"?"live":m.status, ...(fecha?{pred_status:"locked"}:{})},
+           fecha?"Placar mudou: palpites encerrados":undefined);
 });
 $("swapBtn").onclick=()=>{const m=cur();if(m)setMatch({side_a:m.side_a==="ATK"?"DEF":"ATK"});};
 $("mapIn").onchange=e=>setMatch({map:e.target.value.trim()||null},"Mapa atualizado");

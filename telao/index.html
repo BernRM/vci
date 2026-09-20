@@ -491,10 +491,13 @@ const DEMO = new URLSearchParams(location.search).has("demo");
 let db = {teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{screen:"next"}};
 let localScreen = null;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function fit(el,maxRem){
-  const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
+function fit(el,maxRem,tent){
   let s=maxRem; el.style.fontSize=s+"rem";
-  const pe=el.parentElement, cs=getComputedStyle(pe); const w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); if(w<=0) return;
+  const pe=el.parentElement; if(!pe) return;
+  const cs=getComputedStyle(pe); const w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+  // a troca de tela deixa a secao escondida por ~520ms; medir ali da largura 0 e o texto nunca encolhia.
+  // ponytail: tenta de novo por ate ~1s de quadros, o suficiente pra cobrir a transicao.
+  if(w<=0){ if(el.isConnected && (tent||0)<60) requestAnimationFrame(()=>fit(el,maxRem,(tent||0)+1)); return; }
   // ponytail: scrollWidth é inteiro e w é fracionário (849 > 848.8 seria sempre verdade,
   // encolhendo o texto até o piso). Arredondar pra cima compara maçã com maçã.
   const lim=Math.ceil(w);
@@ -510,7 +513,9 @@ function showScreen(scr){
     document.querySelectorAll(".screen").forEach(s=>{
       const on=s.dataset.s===scr; s.classList.toggle("on",on); s.classList.remove("enter");
       if(on && scr==="champion") confetti($("ch-conf"),45,false);
-      if(on){ void s.offsetWidth; s.classList.add("enter"); clearTimeout(s._t); s._t=setTimeout(()=>s.classList.remove("enter"),1800); }
+      // ponytail: ao fim da animacao, um render extra remede os textos que se ajustam
+      // (durante a transicao a secao esta escondida ou ainda assentando, e a medida sai errada)
+      if(on){ void s.offsetWidth; s.classList.add("enter"); clearTimeout(s._t); s._t=setTimeout(()=>{ s.classList.remove("enter"); render(); },1800); }
     });
   };
   if(first||REDUCED){ apply(); return; }
