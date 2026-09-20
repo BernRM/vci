@@ -174,11 +174,16 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .vcards{display:grid;gap:1.4rem;height:29rem}
 .vc{position:relative;border:.35rem solid var(--ink);background:var(--paper);display:flex;flex-direction:column;justify-content:space-between;padding:1.2rem;overflow:hidden}
 .vc .nm{position:relative;z-index:2;font-family:"Bebas Neue",Impact,sans-serif;font-size:4.8rem;line-height:.9;writing-mode:vertical-rl;transform:rotate(180deg);align-self:flex-start;white-space:nowrap}
+.vimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.2);mix-blend-mode:multiply;opacity:.5;z-index:0;pointer-events:none}
+.vc.pick .vimg,.vc.dec .vimg{mix-blend-mode:screen;opacity:.3}
+.vc .ix,.vc .st{position:relative;z-index:2}
+.vdimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.15);mix-blend-mode:multiply;opacity:.28;z-index:-1}
+.vdone{isolation:isolate}
 .vc .ix{font-weight:700;font-size:1.5rem;color:var(--gray)}
 .vc .st{font-weight:700;font-size:1.6rem;position:relative;z-index:2}
 .vc.ban{opacity:.5}
 .vc.ban .nm{text-decoration:line-through;text-decoration-thickness:.3rem}
-.vc.ban::after{content:"";position:absolute;left:-30%;right:-30%;top:44%;height:2rem;background:var(--red);transform:rotate(-58deg)}
+.vc.ban::after{content:"";position:absolute;z-index:1;left:-30%;right:-30%;top:44%;height:2rem;background:var(--red);transform:rotate(-58deg)}
 .vc.ban .st{color:var(--red)}
 .vc.pick{background:var(--ink);color:var(--paper);box-shadow:.7rem .7rem 0 var(--red)}
 .vc.pick .ix{color:var(--paper)}
@@ -583,6 +588,8 @@ function vetoSteps(n,bo){
   return Array(n-1).fill("ban").concat("decider");
 }
 const vetoTeamAt=(i,first)=> i%2===0 ? first : (first==="a"?"b":"a");
+const mapSlug=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-");
+const mapImg=(s,cls)=>s?`<img class="${cls}" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="this.remove()">`:"";
 let vetoPrev=null, vetoDoneT=null;
 function renderVeto(m){
   const box=$("veto"); if(!m) return;
@@ -601,12 +608,12 @@ function renderVeto(m){
     const v=byMap[mp]; let cls="", st="";
     if(v){ if(v.action==="ban"){cls="ban";st="BAN · "+esc(tagOf(v.team));} else if(v.action==="pick"){cls="pick";st="PICK · "+esc(tagOf(v.team));} else {cls="dec";st="DECISIVO";} }
     if(newest.includes(mp)) cls+=" hit";
-    return `<div class="vc ${cls}" data-a="u" style="--i:${i}"><div class="ix">${String(i+1).padStart(2,"0")}</div><div class="nm">${esc(mp)}</div><div class="st">${st}</div></div>`;
+    return `<div class="vc ${cls}" data-a="u" style="--i:${i}">${mapImg(mp,"vimg")}<div class="ix">${String(i+1).padStart(2,"0")}</div><div class="nm">${esc(mp)}</div><div class="st">${st}</div></div>`;
   }).join("");
   const order = m.best_of>1 ? veto.filter(v=>v.action!=="ban") : veto.filter(v=>v.action==="decider");
   $("vt-done").innerHTML = m.best_of>1
     ? `<div class="k">Mapas da série</div><div class="order">${order.map((v,i)=>`<div style="--i:${i}">Mapa ${i+1}<b>${esc(v.map)}</b>${v.team?"escolha de "+esc(tagOf(v.team)):"decisivo"}</div>`).join("")}</div>`
-    : `<div class="k">Mapa da partida</div><div class="big bebas misreg">${esc(order[0]?order[0].map:"")}</div>`;
+    : `${mapImg(order[0]&&order[0].map,"vdimg")}<div class="k">Mapa da partida</div><div class="big bebas misreg">${esc(order[0]?order[0].map:"")}</div>`;
   if(!done){ clearTimeout(vetoDoneT); vetoDoneT=null; box.classList.remove("done"); }
   else if(!box.classList.contains("done") && !vetoDoneT){
     const delay = (vetoPrev && vetoPrev.id===m.id && !vetoPrev.done) ? 1800 : 0;
