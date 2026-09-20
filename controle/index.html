@@ -262,7 +262,7 @@ const setMatch=(patch,msg)=>{const m=cur();if(!m){toast("Escolha a partida",true
 /* ---------- render ---------- */
 function render(){
   const st=db.state;
-  $("curScreen").textContent="no ar: "+({live:"placar",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento"}[st.screen]||"");
+  $("curScreen").textContent="no ar: "+({live:"placar",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento",veto:"veto",champion:"campeão",predict:"palpites",highlight:"destaque"}[st.screen]||"");
   document.querySelectorAll("#screens .btn").forEach(b=>b.classList.toggle("on",b.dataset.s===st.screen));
   const sel=$("matchSel"); sel.innerHTML=db.matches.map(m=>`<option value="${m.id}" ${m.id===st.match_id?"selected":""}>${mLabel(m)}</option>`).join("");
   const m=cur(); const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};
@@ -293,7 +293,14 @@ function renderHlCtl(){
   const m=cur(); const sel=$("hlPlayer"); if(document.activeElement===sel)return;
   const ps=m?db.players.filter(p=>p.team_id===m.team_a||p.team_id===m.team_b):[];
   const h=m&&m.highlight||{};
-  sel.innerHTML=`<option value="">Escolha</option>`+ps.map(p=>{const t=team(p.team_id)||{};return `<option value="${p.id}" ${p.id===h.player_id?"selected":""}>${esc(p.nick)} · ${esc(t.tag||"")}</option>`;}).join("");
+  const keep=sel.value;   // ponytail: render() roda a cada voto/palpite/placar; sem isso a escolha em curso some
+  sel.innerHTML=`<option value="">Escolha</option>`+ps.map(p=>{const t=team(p.team_id)||{};return `<option value="${p.id}">${esc(p.nick)} · ${esc(t.tag||"")}</option>`;}).join("");
+  sel.value = ps.some(p=>String(p.id)===keep) ? keep : (h.player_id?String(h.player_id):"");
+  // mostrando o destaque já salvo: traz as stats de volta, senão editar apagaria tudo
+  if(h.player_id && sel.value===String(h.player_id))
+    [["hlAgent",h.agent],["hlK",h.k],["hlD",h.d],["hlA",h.a],["hlACS",h.acs]].forEach(([id,v])=>{
+      const el=$(id); if(document.activeElement!==el) el.value=v??"";
+    });
 }
 function renderVetoCtl(){
   const m=cur(), pool=db.state.map_pool||[]; const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};

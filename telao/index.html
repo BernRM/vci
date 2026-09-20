@@ -465,7 +465,10 @@ function fit(el,maxRem){
   const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
   let s=maxRem; el.style.fontSize=s+"rem";
   const pe=el.parentElement, cs=getComputedStyle(pe); const w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); if(w<=0) return;
-  while(el.scrollWidth>w && s>2.5){ s-=0.25; el.style.fontSize=s+"rem"; }
+  // ponytail: scrollWidth é inteiro e w é fracionário (849 > 848.8 seria sempre verdade,
+  // encolhendo o texto até o piso). Arredondar pra cima compara maçã com maçã.
+  const lim=Math.ceil(w);
+  while(el.scrollWidth>lim && s>2.5){ s-=0.25; el.style.fontSize=s+"rem"; }
 }
 function bump(el){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
 function replay(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
