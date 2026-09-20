@@ -83,6 +83,7 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" data-s="champion">Campeão</button>
     <button class="btn" data-s="predict">Palpites</button>
     <button class="btn" data-s="highlight">Destaque</button>
+    <button class="btn" data-s="scoreboard">Placar full</button>
   </div>
 </section>
 
@@ -156,6 +157,17 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
   </div>
   <button class="btn red" style="width:100%;margin-top:8px" id="hlShow">Mostrar destaque no telão</button>
   <p class="hint">Copie da tela final de placar do jogo. O fundo usa o mapa da partida.</p>
+</section>
+
+<section>
+  <h2>Placar completo <span id="sbStatus"></span></h2>
+  <div class="grid g3">
+    <button class="btn dark" id="sbShow">Mostrar no telão</button>
+    <button class="btn" id="sbSwap">Trocar lados</button>
+    <button class="btn" id="sbClear">Limpar</button>
+  </div>
+  <div id="sbPrev"></div>
+  <p class="hint">Busque a partida no Destaque acima e toque em “Salvar placar completo”. Se os times saírem no lado errado, use Trocar lados. Limpar tira o placar e o telão volta a avisar que não há nada.</p>
 </section>
 
 <section>
@@ -265,7 +277,7 @@ const setMatch=(patch,msg)=>{const m=cur();if(!m){toast("Escolha a partida",true
 /* ---------- render ---------- */
 function render(){
   const st=db.state;
-  $("curScreen").textContent="no ar: "+({live:"placar",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento",veto:"veto",champion:"campeão",predict:"palpites",highlight:"destaque"}[st.screen]||"");
+  $("curScreen").textContent="no ar: "+({live:"placar",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento",veto:"veto",champion:"campeão",predict:"palpites",highlight:"destaque",scoreboard:"placar completo"}[st.screen]||"");
   document.querySelectorAll("#screens .btn").forEach(b=>b.classList.toggle("on",b.dataset.s===st.screen));
   const sel=$("matchSel"); sel.innerHTML=db.matches.map(m=>`<option value="${m.id}" ${m.id===st.match_id?"selected":""}>${mLabel(m)}</option>`).join("");
   const m=cur(); const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};
@@ -280,7 +292,7 @@ function render(){
   $("mapWinA").textContent="Mapa p/ "+(A.tag||"A");$("mapWinB").textContent="Mapa p/ "+(B.tag||"B");
   const bo=m&&m.best_of>1; $("seriesBox").hidden=!bo;
   if(bo){const need=Math.ceil(m.best_of/2);const p=n=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");$("pips").innerHTML=`${esc(A.tag||"A")} ${p(m.series_a)} &nbsp;·&nbsp; ${p(m.series_b)} ${esc(B.tag||"B")}`;}
-  renderPoll(); renderBracketEd(); renderVetoCtl(); renderPredCtl(); renderHlCtl();
+  renderPoll(); renderBracketEd(); renderVetoCtl(); renderPredCtl(); renderHlCtl(); renderSbCtl();
 }
 function renderPredCtl(){
   const m=cur(); if(!m){$("predStatus").textContent="";return;}
@@ -414,12 +426,14 @@ function renderApiPlayers(mi){
   html+=ps.map((p,i)=>'<button class="btn" style="width:100%;margin-top:6px;text-align:left" data-pi="'+i+'" data-mi="'+mi+'">'
     +esc(p.name+"#"+p.tag)+' · '+esc(p.team_id||"")+' · '+esc((p.agent||{}).name||"")
     +'<br><small style="opacity:.75">'+((p.stats||{}).kills??"?")+' / '+((p.stats||{}).deaths??"?")+' / '+((p.stats||{}).assists??"?")+' · '+acsOf(m,p)+' ACS</small></button>').join("");
-  html+='<button class="btn" style="width:100%;margin-top:8px" data-back="1">Voltar às partidas</button>';
+  html+='<button class="btn red" style="width:100%;margin-top:8px" data-save="'+mi+'">Salvar placar completo ('+ps.length+')</button>';
+  html+='<button class="btn" style="width:100%;margin-top:6px" data-back="1">Voltar às partidas</button>';
   $("hlApi").innerHTML=html;
 }
 
 $("hlApi").onclick=e=>{
-  const b=e.target.closest("[data-mi],[data-back]"); if(!b) return;
+  const b=e.target.closest("[data-mi],[data-back],[data-save]"); if(!b) return;
+  if(b.dataset.save!==undefined){ salvarPlacar(+b.dataset.save); return; }
   if(b.dataset.back){ renderApiMatches(); return; }
   if(b.dataset.pi===undefined){ renderApiPlayers(+b.dataset.mi); return; }
   const m=hlMatches[+b.dataset.mi], p=(m.players||[])[+b.dataset.pi], s=p.stats||{};
@@ -430,6 +444,44 @@ $("hlApi").onclick=e=>{
   if(mp && !$("mapIn").value.trim()) setMatch({map:mp},"Mapa: "+mp);
   toast(p.name+" carregado. Escolha o jogador da VCI.");
 };
+
+/* ---------- placar completo ---------- */
+function salvarPlacar(mi){
+  const m=hlMatches[mi], md=m.metadata||{}, ps=m.players||[];
+  if(!ps.length){ toast("Esta partida não tem jogadores",true); return; }
+  const score={}; (m.teams||[]).forEach(t=>score[t.team_id]=(t.rounds||{}).won??0);
+  const atual=(cur()||{}).scoreboard||{};
+  setMatch({scoreboard:{
+    side_a: atual.side_a || "Red",          // mantem a escolha de lado se ja havia uma
+    map: (md.map||{}).name || null,
+    match_id: md.match_id || null,
+    score,
+    rows: ps.map(p=>({name:p.name,tag:p.tag,team:p.team_id,agent:(p.agent||{}).name||null,
+                      k:(p.stats||{}).kills??null,d:(p.stats||{}).deaths??null,
+                      a:(p.stats||{}).assists??null,acs:acsOf(m,p)}))
+  }},"Placar salvo ("+ps.length+" jogadores)");
+}
+function renderSbCtl(){
+  const m=cur(), sb=m&&m.scoreboard;
+  const n=sb&&(sb.rows||[]).length||0;
+  $("sbStatus").textContent = n ? n+" jogadores · lado A = "+(sb.side_a||"Red") : "nenhum placar";
+  ["sbShow","sbSwap","sbClear"].forEach(id=>$(id).disabled=!n);
+  if(!n){ $("sbPrev").innerHTML=""; return; }
+  const A=team(m.team_a)||{}, B=team(m.team_b)||{}, ladoA=sb.side_a==="Blue"?"Blue":"Red";
+  const nome=l=>l===ladoA?(A.tag||"A"):(B.tag||"B");
+  $("sbPrev").innerHTML=["Red","Blue"].map(l=>{
+    const rs=(sb.rows||[]).filter(r=>r.team===l).sort((x,y)=>(+y.acs||0)-(+x.acs||0));
+    if(!rs.length) return "";
+    return '<div class="hint" style="margin-top:8px"><b>'+esc(nome(l))+'</b> ('+esc(l)+') · '+((sb.score||{})[l]??"?")+' rounds</div>'
+      +rs.map(r=>'<div class="mrow" style="grid-template-columns:1fr auto auto"><span>'+esc(r.name||"")+' · '+esc(r.agent||"")+'</span><span>'+(r.k??"?")+"/"+(r.d??"?")+"/"+(r.a??"?")+'</span><span><b>'+(r.acs??"?")+'</b></span></div>').join("");
+  }).join("");
+}
+$("sbShow").onclick=async()=>{ await setState({screen:"scoreboard"},"Placar no telão"); render(); };
+$("sbSwap").onclick=()=>{ const m=cur(); if(!m||!m.scoreboard) return;
+  const novo={...m.scoreboard, side_a: m.scoreboard.side_a==="Blue"?"Red":"Blue"};
+  setMatch({scoreboard:novo},"Lados trocados"); };
+$("sbClear").onclick=()=>{ const m=cur(); if(!m||!m.scoreboard) return;
+  if(confirm("Limpar o placar completo desta partida?")) setMatch({scoreboard:null},"Placar limpo"); };
 
 $("screens").onclick=e=>{const s=e.target.dataset.s;if(!s)return;db.state.screen=s;render();setState({screen:s});};
 $("matchSel").onchange=e=>{db.state.match_id=+e.target.value;render();setState({match_id:+e.target.value},"Partida selecionada");};

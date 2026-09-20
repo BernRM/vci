@@ -288,6 +288,22 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .hlagentbg{position:absolute;right:0;top:0;height:100%;opacity:.35;mix-blend-mode:screen;z-index:0}
 .hlicon{height:3.2rem;width:3.2rem;object-fit:cover;vertical-align:-.9rem;margin-right:.8rem;border:.2rem solid var(--ink);background:var(--ink)}
 .style-vci .hlbg::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:multiply;opacity:.22;background-image:radial-gradient(rgba(14,14,16,.9) 30%,transparent 32%);background-size:.55rem .55rem}
+.sb{position:absolute;left:4rem;right:4rem;top:10.5rem;bottom:6rem;display:flex;flex-direction:column}
+.sbhead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.4rem solid var(--ink);padding-bottom:.8rem}
+.sbhead .m{font-family:"Bebas Neue",Impact,sans-serif;font-size:3.4rem;line-height:1}
+.sbhead .s{font-family:"Bebas Neue",Impact,sans-serif;font-size:3.4rem;line-height:1}
+.sbcols{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:1.6rem;flex:1;min-height:0}
+.sbcol{display:flex;flex-direction:column;min-height:0}
+.sbt{font-family:"Bebas Neue",Impact,sans-serif;font-size:3rem;line-height:1;padding:.4rem .8rem;background:var(--ink);color:var(--paper);display:flex;justify-content:space-between}
+.sbcol.win .sbt{background:var(--red)}
+.sbr{display:grid;grid-template-columns:3.4rem 1fr auto auto;gap:1rem;align-items:center;padding:.7rem .4rem;border-bottom:.15rem solid rgba(14,14,16,.18);font-weight:700;font-size:1.9rem}
+.sbr img{width:3.4rem;height:3.4rem;object-fit:cover;background:var(--ink)}
+.sbr .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbr .kda{font-variant-numeric:tabular-nums;color:var(--gray);font-size:1.7rem}
+.sbr .acs{font-family:"Bebas Neue",Impact,sans-serif;font-size:2.6rem;min-width:4.5rem;text-align:right}
+.sbr.best .acs{color:var(--red)}
+.enter .sbr{animation:inU .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 70ms + 250ms)}
+.sbnone{display:flex;align-items:center;justify-content:center;height:100%;font-size:2.4rem;color:var(--gray)}
 /* ===== EFEITOS (troca de lado / vitória) ===== */
 .fx{position:absolute;inset:0;z-index:45;pointer-events:none;display:none;overflow:hidden}
 .fx.on{display:block}
@@ -447,6 +463,14 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
     </div>
   </section>
 
+  <!-- PLACAR COMPLETO -->
+  <section class="screen" data-s="scoreboard">
+    <div class="sb" id="sb">
+      <div class="sbhead" data-a="d"><span class="m bebas" id="sb-map">—</span><span class="s bebas" id="sb-score"></span></div>
+      <div class="sbcols"><div class="sbcol" id="sb-a" data-a="l"></div><div class="sbcol" id="sb-b" data-a="r" style="--i:1"></div></div>
+    </div>
+  </section>
+
   <footer class="foot"><span>JACITEC 2026 · Ifes Cachoeiro · Lab B2</span><span id="clock"></span></footer>
   <div class="fx" id="fx"></div>
   <div class="offline" id="offline">sem conexão</div>
@@ -550,9 +574,9 @@ function render(){
   const scr = localScreen || db.state.screen || "next";
   showScreen(scr);
   const m = db.matches.find(x=>x.id===db.state.match_id);
-  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final", predict:"Palpites · "+matchLabel(m), highlight:matchLabel(m)}[scr];
+  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final", predict:"Palpites · "+matchLabel(m), highlight:matchLabel(m), scoreboard:"Placar · "+matchLabel(m)}[scr];
   setText("phase", phase);
-  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); renderPredict(m); renderHighlight(m); handleEvent();
+  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); renderPredict(m); renderHighlight(m); renderScoreboard(m); handleEvent();
 }
 
 function renderLive(m){
@@ -851,6 +875,36 @@ function renderHighlight(m){
   requestAnimationFrame(()=>fit($("hl-nick"),13));
 }
 
+/* ---------- placar completo ---------- */
+function renderScoreboard(m){
+  const sb=m&&m.scoreboard;
+  if(!sb||!(sb.rows||[]).length){ setText("sb-map","Placar"); setText("sb-score","");
+    $("sb-a").innerHTML=`<div class="sbnone">Nenhum placar carregado</div>`; $("sb-b").innerHTML=""; return; }
+  setText("sb-map", sb.map || (m&&m.map) || "");
+  const lados=["Red","Blue"], rows=sb.rows||[];
+  // side_a diz qual lado da partida do jogo corresponde ao time A da chave
+  const ladoA = sb.side_a==="Blue" ? "Blue" : "Red";
+  const sc=sb.score||{};
+  setText("sb-score", `${sc[ladoA]??"?"} — ${sc[ladoA==="Red"?"Blue":"Red"]??"?"}`);
+  const melhor=Math.max(...rows.map(r=>+r.acs||0));
+  const box=(el,lado,tid)=>{
+    const t=team(tid)||{}, meus=rows.filter(r=>r.team===lado).sort((a,b)=>(+b.acs||0)-(+a.acs||0));
+    const ganhou=(sc[lado]??0)>(sc[lado==="Red"?"Blue":"Red"]??0);
+    $(el).className="sbcol"+(ganhou?" win":"");
+    $(el).innerHTML=`<div class="sbt"><span>${esc(t.tag||lado)}</span><span>${sc[lado]??""}</span></div>`
+      +(meus.length?meus.map((r,i)=>{
+        const ag=r.agent?mapSlug(r.agent):null;
+        return `<div class="sbr ${(+r.acs||0)===melhor?"best":""}" style="--i:${i}">`
+          +(ag?`<img src="agentes/${ag}-icon.jpg" alt="" onerror="this.style.visibility='hidden'">`:`<span></span>`)
+          +`<span class="n">${esc(r.name||"")}</span>`
+          +`<span class="kda">${r.k??"?"} / ${r.d??"?"} / ${r.a??"?"}</span>`
+          +`<span class="acs">${r.acs??"?"}</span></div>`;
+      }).join("") : `<div class="sbnone">—</div>`);
+  };
+  box("sb-a", ladoA, m.team_a);
+  box("sb-b", ladoA==="Red"?"Blue":"Red", m.team_b);
+}
+
 /* ---------- relógio e contagem ---------- */
 function tick(){
   const now=new Date();
@@ -864,7 +918,7 @@ function tick(){
 setInterval(tick,500);
 
 /* ---------- plano B: teclado ---------- */
-const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final","6":"veto","7":"champion","8":"predict","9":"highlight"};
+const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final","6":"veto","7":"champion","8":"predict","9":"highlight","q":"scoreboard","Q":"scoreboard"};
 document.addEventListener("keydown",e=>{
   if(KEYS[e.key]){ localScreen=KEYS[e.key]; render(); }
   if(e.key==="0"){ localScreen=null; render(); }
@@ -903,7 +957,13 @@ function demoData(){
   const votes=[]; const add=(c,p,n)=>{for(let i=0;i<n;i++)votes.push({poll_id:1,category:c,player_id:p});};
   add("mvp",1,11);add("mvp",3,7);add("mvp",38,4);add("mvp",2,2);add("troll",39,9);add("troll",5,6);add("troll",36,3);
   const q=new URLSearchParams(location.search);
-  matches.forEach(x=>{x.veto=[];x.veto_first=null;x.pred_status="closed";x.highlight=null;});
+  matches.forEach(x=>{x.veto=[];x.veto_first=null;x.pred_status="closed";x.highlight=null;x.scoreboard=null;});
+  matches[0].scoreboard={side_a:"Red",map:"Ascent",score:{Red:13,Blue:9},rows:[
+    {name:"Sombra1",team:"Red",agent:"Jett",k:24,d:11,a:6,acs:312},{name:"Kiwi1",team:"Red",agent:"Omen",k:17,d:13,a:9,acs:241},
+    {name:"Bala1",team:"Red",agent:"Sova",k:15,d:14,a:7,acs:220},{name:"Neblina1",team:"Red",agent:"Killjoy",k:12,d:15,a:4,acs:188},
+    {name:"Faisca1",team:"Red",agent:"Sage",k:9,d:16,a:11,acs:151},{name:"Sombra8",team:"Blue",agent:"Raze",k:19,d:16,a:3,acs:263},
+    {name:"Kiwi8",team:"Blue",agent:"Astra",k:14,d:17,a:8,acs:203},{name:"Bala8",team:"Blue",agent:"Cypher",k:13,d:18,a:5,acs:179},
+    {name:"Neblina8",team:"Blue",agent:"Neon",k:11,d:18,a:6,acs:164},{name:"Faisca8",team:"Blue",agent:"Skye",k:8,d:19,a:10,acs:139}]};
   matches[1].pred_status="open"; matches[0].highlight={player_id:1,agent:"Jett",k:24,d:11,a:6,acs:312,map:"Ascent"};
   const fans=[{voter:"u1",nick:"Profeta"},{voter:"u2",nick:"Bola8"},{voter:"u3",nick:"Mãe Diná"}];
   const predictions=[]; for(let i=0;i<23;i++) predictions.push({match_id:2,team_id:i%3?4:5,voter:"x"+i});
