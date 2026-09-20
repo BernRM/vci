@@ -81,6 +81,8 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" data-s="final">Encerr.</button>
     <button class="btn" data-s="veto">Veto</button>
     <button class="btn" data-s="champion">Campeão</button>
+    <button class="btn" data-s="predict">Palpites</button>
+    <button class="btn" data-s="highlight">Destaque</button>
   </div>
 </section>
 
@@ -134,6 +136,26 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
 </section>
 
 <section>
+  <h2>Palpites <span id="predStatus"></span></h2>
+  <div class="grid g2"><button class="btn dark" id="predOpen">Abrir palpites</button><button class="btn" id="predLock">Encerrar</button></div>
+  <div class="counts" id="predCounts"></div>
+  <p class="hint">Abrir já mostra a tela de palpites no telão. Marcar a partida como ao vivo encerra os palpites sozinho.</p>
+  <details style="margin-top:8px"><summary>Ranking de oráculos (moderar apelidos)</summary><div id="oracList" style="margin-top:6px"></div></details>
+</section>
+
+<section>
+  <h2>Destaque da partida</h2>
+  <label>Jogador</label><select id="hlPlayer"></select>
+  <label>Agente</label><input type="text" id="hlAgent" list="agents" placeholder="Ex.: Jett">
+  <datalist id="agents"><option>Astra</option><option>Breach</option><option>Brimstone</option><option>Chamber</option><option>Clove</option><option>Cypher</option><option>Deadlock</option><option>Fade</option><option>Gekko</option><option>Harbor</option><option>Iso</option><option>Jett</option><option>KAY/O</option><option>Killjoy</option><option>Neon</option><option>Omen</option><option>Phoenix</option><option>Raze</option><option>Reyna</option><option>Sage</option><option>Skye</option><option>Sova</option><option>Tejo</option><option>Viper</option><option>Vyse</option><option>Waylay</option><option>Yoru</option></datalist>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:8px">
+    <input type="number" id="hlK" min="0" placeholder="Abates"><input type="number" id="hlD" min="0" placeholder="Mortes"><input type="number" id="hlA" min="0" placeholder="Assist."><input type="number" id="hlACS" min="0" placeholder="ACS">
+  </div>
+  <button class="btn red" style="width:100%;margin-top:8px" id="hlShow">Mostrar destaque no telão</button>
+  <p class="hint">Copie da tela final de placar do jogo. O fundo usa o mapa da partida.</p>
+</section>
+
+<section>
   <h2>Votação <span id="pollStatus">sem votação</span></h2>
   <button class="btn dark" style="width:100%" id="newPoll">Criar votação desta partida</button>
   <div class="grid g3" style="margin-top:8px">
@@ -177,7 +199,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const ALL_MAPS=["Abyss","Ascent","Bind","Breeze","Corrode","Fracture","Haven","Icebox","Lotus","Pearl","Split","Sunset"];
 function vetoSteps(n,bo){ if(n<1)return[]; if(bo>1){const s=["ban","ban","pick","pick"];while(s.length<n-1)s.push("ban");return s.slice(0,n-1).concat("decider");} return Array(n-1).fill("ban").concat("decider"); }
 const vetoTeamAt=(i,first)=>i%2===0?first:(first==="a"?"b":"a");
-let db={teams:[],players:[],matches:[],polls:[],votes:[],state:{}};
+let db={teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{}};
 
 function toast(msg,err){const t=$("toast");t.textContent=msg;t.className="toast on"+(err?" err":"");clearTimeout(t._h);t._h=setTimeout(()=>t.className="toast",2200);}
 async function run(p,ok){const r=await p;if(r.error){toast("Erro: "+r.error.message,true);return null;}if(ok)toast(ok);return r;}
@@ -203,12 +225,13 @@ async function showApp(user){
 
 /* ---------- dados ---------- */
 async function loadAll(){
-  const [t,p,m,po,s]=await Promise.all([
+  const [t,p,m,po,s,pr,fa]=await Promise.all([
     sb.from("teams").select("*").order("seed"),sb.from("players").select("*"),
     sb.from("matches").select("*").order("bracket_round").order("slot"),
-    sb.from("polls").select("*").order("id"),sb.from("display_state").select("*").eq("id",1).single()]);
+    sb.from("polls").select("*").order("id"),sb.from("display_state").select("*").eq("id",1).single(),
+    sb.from("predictions").select("match_id,team_id,voter"),sb.from("fans").select("voter,nick")]);
   if(s.error){toast("Sem conexão com o banco",true);return;}
-  db.teams=t.data;db.players=p.data;db.matches=m.data;db.polls=po.data;db.state=s.data;
+  db.teams=t.data;db.players=p.data;db.matches=m.data;db.polls=po.data;db.state=s.data;db.predictions=pr.data||[];db.fans=fa.data||[];
   await loadVotes(); render();
 }
 async function loadVotes(){
@@ -221,6 +244,8 @@ function subscribe(){
    .on("postgres_changes",{event:"*",schema:"public",table:"display_state"},refresh)
    .on("postgres_changes",{event:"*",schema:"public",table:"matches"},refresh)
    .on("postgres_changes",{event:"*",schema:"public",table:"polls"},refresh)
+   .on("postgres_changes",{event:"*",schema:"public",table:"predictions"},refresh)
+   .on("postgres_changes",{event:"*",schema:"public",table:"fans"},refresh)
    .on("postgres_changes",{event:"*",schema:"public",table:"votes"},async()=>{await loadVotes();renderPoll();})
    .subscribe();
 }
@@ -252,7 +277,23 @@ function render(){
   $("mapWinA").textContent="Mapa p/ "+(A.tag||"A");$("mapWinB").textContent="Mapa p/ "+(B.tag||"B");
   const bo=m&&m.best_of>1; $("seriesBox").hidden=!bo;
   if(bo){const need=Math.ceil(m.best_of/2);const p=n=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");$("pips").innerHTML=`${esc(A.tag||"A")} ${p(m.series_a)} &nbsp;·&nbsp; ${p(m.series_b)} ${esc(B.tag||"B")}`;}
-  renderPoll(); renderBracketEd(); renderVetoCtl();
+  renderPoll(); renderBracketEd(); renderVetoCtl(); renderPredCtl(); renderHlCtl();
+}
+function renderPredCtl(){
+  const m=cur(); if(!m){$("predStatus").textContent="";return;}
+  const A=team(m.team_a)||{},B=team(m.team_b)||{}; const ps=db.predictions.filter(p=>p.match_id===m.id);
+  $("predStatus").textContent={closed:"fechados",open:"abertos",locked:"encerrados"}[m.pred_status]||"";
+  $("predCounts").innerHTML=`<div>${esc(A.tag||"A")}<b>${ps.filter(p=>p.team_id===m.team_a).length}</b></div><div>${esc(B.tag||"B")}<b>${ps.filter(p=>p.team_id===m.team_b).length}</b></div>`;
+  const sc={}; db.predictions.forEach(p=>{const mm=db.matches.find(x=>x.id===p.match_id&&x.winner);if(!mm)return;const s=sc[p.voter]||(sc[p.voter]={hit:0});if(p.team_id===mm.winner)s.hit++;});
+  const nickOf=v=>(db.fans.find(f=>f.voter===v)||{}).nick;
+  const list=db.fans.map(f=>({v:f.voter,nick:f.nick,hit:(sc[f.voter]||{}).hit||0})).sort((a,b)=>b.hit-a.hit).slice(0,15);
+  $("oracList").innerHTML=list.length?list.map(x=>`<div class="mrow" style="grid-template-columns:1fr 50px 90px"><span>${esc(x.nick)}</span><span>${x.hit}</span><button class="btn" style="min-height:36px;padding:4px" data-rmfan="${x.v}">Remover</button></div>`).join(""):`<p class="hint">Ninguém palpitou ainda.</p>`;
+}
+function renderHlCtl(){
+  const m=cur(); const sel=$("hlPlayer"); if(document.activeElement===sel)return;
+  const ps=m?db.players.filter(p=>p.team_id===m.team_a||p.team_id===m.team_b):[];
+  const h=m&&m.highlight||{};
+  sel.innerHTML=`<option value="">Escolha</option>`+ps.map(p=>{const t=team(p.team_id)||{};return `<option value="${p.id}" ${p.id===h.player_id?"selected":""}>${esc(p.nick)} · ${esc(t.tag||"")}</option>`;}).join("");
 }
 function renderVetoCtl(){
   const m=cur(), pool=db.state.map_pool||[]; const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};
@@ -294,13 +335,25 @@ $("vReset").onclick=()=>{const m=cur();if(m&&confirm("Recomeçar o veto desta pa
 $("poolEd").onclick=e=>{const b=e.target.closest("[data-pool]");if(!b)return;let pool=[...(db.state.map_pool||[])];const mp=b.dataset.pool;
   pool=pool.includes(mp)?pool.filter(x=>x!==mp):ALL_MAPS.filter(x=>pool.includes(x)||x===mp);setState({map_pool:pool},"Pool: "+pool.length+" mapas");render();};
 
+$("predOpen").onclick=async()=>{const m=cur();if(!m)return;await setMatch({pred_status:"open"},"Palpites abertos");await setState({screen:"predict"});render();};
+$("predLock").onclick=()=>setMatch({pred_status:"locked"},"Palpites encerrados");
+$("oracList").onclick=async e=>{const b=e.target.closest("[data-rmfan]");if(!b)return;if(!confirm("Remover este apelido do ranking?"))return;await run(sb.from("fans").delete().eq("voter",b.dataset.rmfan),"Apelido removido");};
+$("hlShow").onclick=async()=>{
+  const m=cur();if(!m)return;const pid=+$("hlPlayer").value;if(!pid){toast("Escolha o jogador",true);return;}
+  const num=id=>{const v=$(id).value;return v===""?null:Math.max(0,parseInt(v,10));};
+  const order=(m.veto||[]).filter(v=>v.action!=="ban");
+  const map=m.map||(order.length?order[Math.max(0,Math.min(order.length-1,m.series_a+m.series_b-1))].map:null);
+  await setMatch({highlight:{player_id:pid,agent:$("hlAgent").value.trim().slice(0,20)||null,k:num("hlK"),d:num("hlD"),a:num("hlA"),acs:num("hlACS"),map}},"Destaque salvo");
+  await setState({screen:"highlight"});render();
+};
+
 $("screens").onclick=e=>{const s=e.target.dataset.s;if(!s)return;db.state.screen=s;render();setState({screen:s});};
 $("matchSel").onchange=e=>{db.state.match_id=+e.target.value;render();setState({match_id:+e.target.value},"Partida selecionada");};
-$("startBtn").onclick=()=>setMatch({status:"live"},"Partida ao vivo");
+$("startBtn").onclick=()=>{const m=cur();setMatch({status:"live",...(m&&m.pred_status==="open"?{pred_status:"locked"}:{})},"Partida ao vivo");};
 $("resetBtn").onclick=()=>{if(confirm("Zerar os rounds desta partida?"))setMatch({score_a:0,score_b:0},"Placar zerado");};
 document.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>{
   const m=cur();if(!m)return;const [k,d]=b.dataset.sc.split(",");const f="score_"+k;
-  const v=Math.max(0,m[f]+ +d); setMatch({[f]:v, status:m.status==="pending"?"live":m.status});
+  const v=Math.max(0,m[f]+ +d); setMatch({[f]:v, status:m.status==="pending"?"live":m.status, ...(m.pred_status==="open"?{pred_status:"locked"}:{})});
 });
 $("swapBtn").onclick=()=>{const m=cur();if(m)setMatch({side_a:m.side_a==="ATK"?"DEF":"ATK"});};
 $("mapIn").onchange=e=>setMatch({map:e.target.value.trim()||null},"Mapa atualizado");

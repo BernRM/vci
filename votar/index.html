@@ -25,6 +25,9 @@ main{max-width:560px;margin:0 auto;padding:0 18px}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .opt{border:3px solid var(--ink);background:var(--paper);min-height:52px;padding:8px 10px;text-align:left;font:700 18px Rajdhani,sans-serif;color:var(--ink);cursor:pointer;touch-action:manipulation;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .opt.sel{background:var(--ink);color:var(--paper);box-shadow:4px 4px 0 var(--red)}
+.opt.tall{min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;white-space:normal;text-align:center;gap:4px}
+.opt.tall .bebas{font-size:56px;line-height:.9}
+.opt.tall small{font-size:14px;font-weight:600}
 .search{width:100%;border:3px solid var(--ink);background:#fff;padding:10px;min-height:48px;font:600 17px Rajdhani,sans-serif;margin-bottom:6px;border-radius:0}
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:4px solid var(--ink);padding:12px 18px calc(12px + env(safe-area-inset-bottom,0))}
 .send{width:100%;max-width:560px;display:block;margin:0 auto;min-height:56px;border:0;background:var(--red);color:#fff;font:400 28px "Bebas Neue",Impact,sans-serif;letter-spacing:.02em;cursor:pointer}
@@ -51,6 +54,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pollId=+new URLSearchParams(location.search).get("p");
+const matchId=+new URLSearchParams(location.search).get("m");
 const CATS={mvp:["MVP","Quem jogou mais?"],troll:["Mais troll","Quem mais aprontou?"],nome:["Melhor nome","Qual equipe tem o melhor nome?"]};
 let poll=null,teams=[],players=[],choice={};
 
@@ -58,9 +62,10 @@ function message(h,p){$("bar").hidden=true;$("main").innerHTML=`<div class="msg"
 const votedKey=()=>"vci-voted-"+pollId;
 
 async function boot(){
-  if(!pollId){message("Ops","Link de votação inválido. Escaneie o QR code do telão.");return;}
+  if(!pollId&&!matchId){message("Ops","Link inválido. Escaneie o QR code do telão.");return;}
   let {data:{session}}=await sb.auth.getSession();
   if(!session){const r=await sb.auth.signInAnonymously();if(r.error){message("Ops","Não foi possível iniciar a votação. Tente de novo.");return;}}
+  if(matchId){await bootPredict();return;}
   const [p,t,pl]=await Promise.all([sb.from("polls").select("*").eq("id",pollId).single(),sb.from("teams").select("*"),sb.from("players").select("*")]);
   if(p.error){message("Ops","Votação não encontrada.");return;}
   poll=p.data;teams=t.data;players=pl.data;
@@ -114,6 +119,44 @@ $("send").onclick=async()=>{
   }
   localStorage.setItem(votedKey(),"1");$("sub").textContent="Obrigado!";message("Voto enviado","Acompanhe o resultado no telão.");
 };
+/* ---------- palpites ---------- */
+let pm=null,myNick=null;
+const predKey=()=>"vci-pred-"+matchId;
+async function bootPredict(){
+  const {data:{user}}=await sb.auth.getUser();
+  const [mr,t,f]=await Promise.all([
+    sb.from("matches").select("id,team_a,team_b,pred_status,winner").eq("id",matchId).single(),
+    sb.from("teams").select("*"), sb.from("fans").select("nick").eq("voter",user.id).maybeSingle()]);
+  if(mr.error){message("Ops","Partida não encontrada.");return;}
+  pm=mr.data;teams=t.data;myNick=f.data&&f.data.nick;
+  sb.channel("pm"+matchId).on("postgres_changes",{event:"UPDATE",schema:"public",table:"matches",filter:"id=eq."+matchId},e=>{const ch=e.new.pred_status!==pm.pred_status;pm={...pm,...e.new};if(ch)predView();}).subscribe();
+  predView();
+}
+function predView(){
+  const A=teams.find(x=>x.id===pm.team_a)||{},B=teams.find(x=>x.id===pm.team_b)||{};
+  $("title").textContent=`${A.tag||"?"} x ${B.tag||"?"}`;
+  const mine=localStorage.getItem(predKey());
+  if(mine){const t=teams.find(x=>x.id===+mine)||{};$("sub").textContent="Palpite registrado";message("Palpite feito",`Você apostou em ${esc(t.name||t.tag||"")}. Acompanhe no telão.`);return;}
+  if(pm.pred_status!=="open"){$("sub").textContent="";message("Palpites fechados",pm.pred_status==="locked"?"A partida já começou.":"Aguarde a organização abrir os palpites.");return;}
+  $("sub").textContent="Quem vence esta partida?";
+  $("main").innerHTML=(myNick?"":`<div class="cat"><h2>Seu apelido</h2><div class="q">Aparece no ranking de oráculos no telão. Nada ofensivo, ou ele será removido.</div><input class="search" id="nick" maxlength="16" placeholder="Ex.: Profeta"></div>`)
+    +`<div class="cat"><h2>Palpite</h2><div class="q">Toque no time que você acha que vence.</div><div class="opts">${[A,B].map(t=>`<button class="opt tall" data-t="${t.id}"><span class="bebas">${esc(t.tag||"?")}</span><small>${esc(t.name||"")}</small></button>`).join("")}</div></div>`;
+  let pick=null;
+  const upd=()=>{const nk=myNick||(($("nick")||{}).value||"").trim();$("send").disabled=!(pick&&nk.length>=2);};
+  $("main").onclick=e=>{const b=e.target.closest("[data-t]");if(!b)return;$("main").querySelectorAll("[data-t]").forEach(o=>o.classList.remove("sel"));b.classList.add("sel");pick=+b.dataset.t;upd();};
+  if($("nick"))$("nick").oninput=upd;
+  $("send").textContent="Enviar palpite";$("bar").hidden=false;upd();
+  $("send").onclick=async()=>{
+    $("send").disabled=true;$("err").textContent="";
+    const {data:{user}}=await sb.auth.getUser();
+    if(!myNick){const nk=$("nick").value.trim().slice(0,16);const r=await sb.from("fans").upsert({voter:user.id,nick:nk});
+      if(r.error){$("err").textContent="Apelido inválido (de 2 a 16 caracteres).";$("send").disabled=false;return;} myNick=nk;}
+    const r=await sb.from("predictions").insert({match_id:matchId,team_id:pick,voter:user.id});
+    if(r.error){ if(r.error.code==="23505"){localStorage.setItem(predKey(),String(pick));predView();return;}
+      $("err").textContent=pm.pred_status!=="open"?"Os palpites foram encerrados.":"Não foi possível enviar. Tente de novo.";$("send").disabled=false;return;}
+    localStorage.setItem(predKey(),String(pick));predView();
+  };
+}
 boot();
 </script>
 </body>

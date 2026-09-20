@@ -180,6 +180,10 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .vdimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.15);mix-blend-mode:multiply;opacity:.28;z-index:-1}
 .vdone{isolation:isolate}
 .vfull,.vtri{position:absolute;inset:0;overflow:hidden}
+/* estilo VCI nas fotos: duotone + retícula */
+.style-vci .vfimg{filter:contrast(1.25) url(#vci-duo)}
+.style-vci .vfull::after,.style-vci .vpan::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:multiply;opacity:.22;
+  background-image:radial-gradient(rgba(14,14,16,.9) 30%,transparent 32%);background-size:.55rem .55rem}
 .vfull{background:var(--ink)}
 .vfimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 10s ease-out both}
 @keyframes kb{from{transform:scale(1.14)}to{transform:scale(1)}}
@@ -239,6 +243,45 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .confetti.once .cf{animation-iteration-count:1;animation-fill-mode:both}
 @keyframes fall{to{transform:translateY(72rem) rotate(var(--r))}}
 
+
+/* ===== PALPITES ===== */
+.pred{position:absolute;left:4rem;right:4rem;top:11rem;bottom:11.5rem;display:grid;grid-template-columns:minmax(0,1fr) 24rem minmax(0,1fr);gap:4rem;align-items:center}
+.pside .tag{font-size:10rem;white-space:nowrap}
+.pside .name{font-weight:700;font-size:2.2rem}
+.pside .pct{font-size:10rem;line-height:.85;margin-top:1.6rem;display:inline-block}
+.pside.b{text-align:right}
+.pbar{height:2rem;margin-top:1rem;background:repeating-linear-gradient(-45deg,transparent 0 .5rem,rgba(14,14,16,.12) .5rem .7rem)}
+.pfill{height:100%;width:0;background:var(--ink);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.pside.b .pbar{transform:scaleX(-1)}
+.pside.lead .pfill{background:var(--red)}
+.pside.lead .pct{color:var(--red)}
+.pcnt{font-weight:600;font-size:1.8rem;color:var(--gray);margin-top:.6rem}
+.pmid{text-align:center}
+.pk{white-space:nowrap;font-family:"Bebas Neue",Impact,sans-serif;font-size:4.6rem;line-height:.9;text-shadow:.35rem .25rem 0 var(--red)}
+#pqr{background:#fff;padding:1rem;width:17rem;height:17rem;margin:1.2rem auto .8rem;border:.35rem solid var(--ink)}
+#pqr img,#pqr canvas{width:100%!important;height:100%!important}
+.purl{font-weight:600;font-size:1.3rem;word-break:break-all}
+.pst{font-weight:700;font-size:2rem;color:var(--red);margin-top:.8rem}
+.pred.locked #pqr{opacity:.25}
+.orac{position:absolute;left:12rem;right:4rem;bottom:6rem;border-top:.3rem solid var(--ink);padding-top:1rem;display:flex;gap:3rem;font-weight:700;font-size:1.9rem;align-items:baseline;white-space:nowrap;overflow:hidden}
+.orac .t{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:2.8rem;color:var(--red)}
+.orac b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:2.4rem;margin-left:.5rem}
+
+/* ===== DESTAQUE ===== */
+.hl{position:absolute;left:4rem;right:4rem;top:11.5rem;bottom:7rem;overflow:hidden;background:var(--ink)}
+.hlbg{position:absolute;inset:0}
+.hl.noimg{background:var(--red)}
+.hlbox{position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--paper);padding:2.4rem 8rem 2.4rem 3rem;display:flex;flex-direction:column;justify-content:center;clip-path:polygon(0 0,100% 0,85% 100%,0 100%);z-index:2}
+.hk{font-weight:700;font-size:2.4rem;color:var(--red)}
+.hn{font-size:13rem;line-height:.85;white-space:nowrap;margin-top:.4rem}
+.ht{font-weight:700;font-size:2.4rem;margin-top:.8rem}
+.hstats{display:flex;gap:3rem;margin-top:2.6rem;border-top:.3rem solid var(--ink);padding-top:1.4rem}
+.hs .v{font-family:"Bebas Neue",Impact,sans-serif;font-size:7rem;line-height:.9}
+.hs:last-child .v{color:var(--red)}
+.hs .l{font-weight:700;font-size:1.5rem;color:var(--gray)}
+.enter .hs{animation:stamp .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 150ms + 550ms)}
+.enter .hlbox{animation:inL .7s cubic-bezier(.2,.8,.2,1) both}
+.style-vci .hlbg::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:multiply;opacity:.22;background-image:radial-gradient(rgba(14,14,16,.9) 30%,transparent 32%);background-size:.55rem .55rem}
 /* ===== EFEITOS (troca de lado / vitória) ===== */
 .fx{position:absolute;inset:0;z-index:45;pointer-events:none;display:none;overflow:hidden}
 .fx.on{display:block}
@@ -275,6 +318,16 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="vci-duo" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values=".3 .59 .11 0 0  .3 .59 .11 0 0  .3 .59 .11 0 0  0 0 0 1 0"/>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.055 0.60 0.80 0.949"/>
+      <feFuncG type="table" tableValues="0.055 0.16 0.66 0.941"/>
+      <feFuncB type="table" tableValues="0.063 0.20 0.64 0.922"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
 <div class="stage" id="stage">
   <div class="halftone"></div><div class="strip"></div>
   <div class="wipe" id="wipe"><div class="w2"></div><div class="w1"><span class="bebas">VCI</span></div></div>
@@ -365,6 +418,29 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
     </div>
   </section>
 
+  <!-- PALPITES -->
+  <section class="screen" data-s="predict">
+    <div class="pred" id="pred">
+      <div class="pside a" data-a="l"><div class="tag bebas misreg" id="p-tagA">—</div><div class="name" id="p-nameA"></div><div class="pct bebas" id="p-pctA">0%</div><div class="pbar"><div class="pfill" id="p-fillA"></div></div><div class="pcnt" id="p-cntA"></div></div>
+      <div class="pmid" data-a="u" style="--i:1"><div class="pk">Quem vence?</div><div id="pqr"></div><div class="purl" id="p-url"></div><div class="pst" id="p-st"></div></div>
+      <div class="pside b" data-a="r"><div class="tag bebas misreg" id="p-tagB">—</div><div class="name" id="p-nameB"></div><div class="pct bebas" id="p-pctB">0%</div><div class="pbar"><div class="pfill" id="p-fillB"></div></div><div class="pcnt" id="p-cntB"></div></div>
+    </div>
+    <div class="orac" id="p-orac" data-a="u" style="--i:3"></div>
+  </section>
+
+  <!-- DESTAQUE -->
+  <section class="screen" data-s="highlight">
+    <div class="hl" id="hl">
+      <div class="hlbg" id="hl-bg"></div>
+      <div class="hlbox">
+        <div class="hk" data-a="d">Destaque da partida</div>
+        <div class="hn bebas misreg" id="hl-nick" data-a="s" style="--i:1">—</div>
+        <div class="ht" id="hl-team" data-a="u" style="--i:2"></div>
+        <div class="hstats" id="hl-stats"></div>
+      </div>
+    </div>
+  </section>
+
   <footer class="foot"><span>JACITEC 2026 · Ifes Cachoeiro · Lab B2</span><span id="clock"></span></footer>
   <div class="fx" id="fx"></div>
   <div class="offline" id="offline">sem conexão</div>
@@ -375,19 +451,20 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 const SUPABASE_URL = "https://zdoayfqwyhngipdqoaiu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
 const VOTE_URL     = "https://bernrm.github.io/vci/votar/";
+const MAP_STYLE    = new URLSearchParams(location.search).get("mapas") || "vci";   // "vci" = duotone da VCI | "original" = foto sem tratamento
 /* ======================== */
 
 const CAT_LABEL = {mvp:"MVP", troll:"Mais troll", nome:"Melhor nome"};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const DEMO = new URLSearchParams(location.search).has("demo");
-let db = {teams:[],players:[],matches:[],polls:[],votes:[],state:{screen:"next"}};
+let db = {teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{screen:"next"}};
 let localScreen = null;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function fit(el,maxRem){
   const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
   let s=maxRem; el.style.fontSize=s+"rem";
-  const w=el.parentElement.clientWidth; if(!w) return;
+  const pe=el.parentElement, cs=getComputedStyle(pe); const w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); if(w<=0) return;
   while(el.scrollWidth>w && s>2.5){ s-=0.25; el.style.fontSize=s+"rem"; }
 }
 function bump(el){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
@@ -411,14 +488,15 @@ function showScreen(scr){
 let sb = null;
 async function loadAll(){
   if(DEMO){ db = demoData(); render(); return; }
-  const [t,p,m,po,s] = await Promise.all([
+  const [t,p,m,po,s,pr,fa] = await Promise.all([
     sb.from("teams").select("*"), sb.from("players").select("*"),
     sb.from("matches").select("*"), sb.from("polls").select("*"),
-    sb.from("display_state").select("*").eq("id",1).single()
+    sb.from("display_state").select("*").eq("id",1).single(),
+    sb.from("predictions").select("match_id,team_id,voter"), sb.from("fans").select("voter,nick")
   ]);
   if(t.error||m.error||s.error){ $("offline").classList.add("on"); return; }
   $("offline").classList.remove("on");
-  db.teams=t.data; db.players=p.data; db.matches=m.data; db.polls=po.data; db.state=s.data;
+  db.teams=t.data; db.players=p.data; db.matches=m.data; db.polls=po.data; db.state=s.data; db.predictions=pr.data||[]; db.fans=fa.data||[];
   await loadVotes(); render();
 }
 async function loadVotes(){
@@ -441,6 +519,8 @@ function subscribe(){
     .on("postgres_changes",{event:"*",schema:"public",table:"polls"},refresh)
     .on("postgres_changes",{event:"*",schema:"public",table:"teams"},refresh)
     .on("postgres_changes",{event:"*",schema:"public",table:"players"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"predictions"},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"fans"},refresh)
     .on("postgres_changes",{event:"*",schema:"public",table:"votes"},async()=>{await loadVotes();renderVote();renderFinal();})
     .subscribe(st=>{ $("offline").classList.toggle("on", st==="CHANNEL_ERROR"||st==="TIMED_OUT"||st==="CLOSED"); if(st==="SUBSCRIBED") loadAll(); });
 }
@@ -461,9 +541,9 @@ function render(){
   const scr = localScreen || db.state.screen || "next";
   showScreen(scr);
   const m = db.matches.find(x=>x.id===db.state.match_id);
-  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final"}[scr];
+  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final", predict:"Palpites · "+matchLabel(m), highlight:matchLabel(m)}[scr];
   setText("phase", phase);
-  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); handleEvent();
+  renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); renderPredict(m); renderHighlight(m); handleEvent();
 }
 
 function renderLive(m){
@@ -585,7 +665,9 @@ function renderFinal(){
   setText("f-roster", ch? db.players.filter(p=>p.team_id===ch.id&&!p.is_sub).map(p=>p.nick).join(" · ") : "");
   const g=db.polls.filter(p=>!p.match_id).sort((a,b)=>b.id-a.id)[0];
   const aw=$("f-awards");
-  if(!g){ aw.innerHTML=""; return; }
+  const orc=oracles()[0];
+  const orHtml = orc ? `<div class="award"><div class="t">Oráculo da VCI</div><div class="v bebas">${esc(orc.nick)}</div><div class="d">${orc.hit} ${orc.hit===1?"palpite certo":"palpites certos"}</div></div>` : "";
+  if(!g){ aw.innerHTML=orHtml; requestAnimationFrame(()=>aw.querySelectorAll(".v").forEach(v=>fit(v,5.4))); return; }
   aw.innerHTML = g.categories.map(cat=>{
     const vs=db.votes.filter(v=>v.poll_id===g.id&&v.category===cat); const c={};
     vs.forEach(v=>{const k=v.player_id?("p"+v.player_id):("t"+v.team_id);c[k]=(c[k]||0)+1;});
@@ -596,7 +678,7 @@ function renderFinal(){
     const title = cat==="troll" ? "Troféu Troll" : (CAT_LABEL[cat]||cat);
     const st = g.status==="revealed" && !renderFinal.wasRevealed ? " stamp" : "";
     return `<div class="award"><div class="t">${esc(title)}</div><div class="v bebas${st}">${esc(name)}</div><div class="d">${esc(d)}</div></div>`;
-  }).join("");
+  }).join("") + orHtml;
   renderFinal.wasRevealed = g.status==="revealed";
   requestAnimationFrame(()=>aw.querySelectorAll(".v").forEach(v=>fit(v,5.4)));
 }
@@ -704,6 +786,55 @@ function playWin(ev){
   }
 }
 
+
+/* ---------- palpites ---------- */
+function oracles(){
+  const sc={};
+  db.predictions.forEach(p=>{ const m=db.matches.find(x=>x.id===p.match_id&&x.winner); if(!m) return;
+    const s=sc[p.voter]||(sc[p.voter]={hit:0,n:0}); s.n++; if(p.team_id===m.winner) s.hit++; });
+  return Object.entries(sc).map(([v,s])=>({v,...s,nick:(db.fans.find(f=>f.voter===v)||{}).nick}))
+    .filter(x=>x.nick&&x.hit>0).sort((a,b)=>b.hit-a.hit||a.n-b.n);
+}
+let pqrFor=null, predPrevId=null;
+function renderPredict(m){
+  if(!m) return;
+  const A=team(m.team_a)||{}, B=team(m.team_b)||{};
+  setText("p-tagA",A.tag||"—"); setText("p-nameA",A.name); setText("p-tagB",B.tag||"—"); setText("p-nameB",B.name);
+  const ps=db.predictions.filter(p=>p.match_id===m.id);
+  const na=ps.filter(p=>p.team_id===m.team_a).length, nb=ps.filter(p=>p.team_id===m.team_b).length, tot=na+nb;
+  const pa=tot?Math.round(na/tot*100):0, pb=tot?100-pa:0;
+  const same=predPrevId===m.id;
+  [["p-pctA",pa],["p-pctB",pb]].forEach(([id,v])=>{ const el=$(id); if(el.textContent!==v+"%"){ el.textContent=v+"%"; if(same) bump(el); } });
+  requestAnimationFrame(()=>{ $("p-fillA").style.width=pa+"%"; $("p-fillB").style.width=pb+"%"; });
+  setText("p-cntA",`${na} ${na===1?"palpite":"palpites"}`); setText("p-cntB",`${nb} ${nb===1?"palpite":"palpites"}`);
+  document.querySelector(".pside.a").classList.toggle("lead",na>nb); document.querySelector(".pside.b").classList.toggle("lead",nb>na);
+  const url=VOTE_URL+"?m="+m.id;
+  if(pqrFor!==url && typeof QRCode!=="undefined"){ $("pqr").innerHTML=""; new QRCode($("pqr"),{text:url,width:512,height:512,colorDark:"#0E0E10",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M}); pqrFor=url; }
+  setText("p-url",url.replace("https://",""));
+  $("pred").classList.toggle("locked",m.pred_status!=="open");
+  let st = m.pred_status==="open" ? "Palpites abertos" : m.pred_status==="locked" ? "Palpites encerrados" : "Palpites ainda fechados";
+  if(m.winner){ const hit=ps.filter(p=>p.team_id===m.winner).length; st = tot ? `${hit} de ${tot} acertaram (${Math.round(hit/tot*100)}%)` : "Sem palpites nesta partida"; }
+  setText("p-st",st);
+  const o=oracles().slice(0,3);
+  $("p-orac").innerHTML = `<span class="t">Oráculos</span>` + (o.length ? o.map((x,i)=>`<span>${i+1}. ${esc(x.nick)}<b>${x.hit}</b></span>`).join("") : `<span style="color:var(--gray)">Quem mais acertar palpites leva o título no encerramento</span>`);
+  predPrevId=m.id;
+}
+
+/* ---------- destaque ---------- */
+let hlSig=null;
+function renderHighlight(m){
+  const box=$("hl"), h=m&&m.highlight;
+  if(!h){ setText("hl-nick","—"); setText("hl-team","Nenhum destaque definido"); $("hl-stats").innerHTML=""; $("hl-bg").innerHTML=""; box.classList.add("noimg"); hlSig=null; return; }
+  const p=player(h.player_id)||{}, t=team(p.team_id)||{};
+  setText("hl-nick",p.nick||"—"); setText("hl-team",`${t.name||""}${h.agent?" · "+h.agent:""}`);
+  const stats=[["Abates",h.k],["Mortes",h.d],["Assist.",h.a],["ACS",h.acs]].filter(s=>s[1]!==null&&s[1]!==undefined&&s[1]!=="");
+  $("hl-stats").innerHTML=stats.map((s,i)=>`<div class="hs" style="--i:${i}"><div class="v">${esc(s[1])}</div><div class="l">${s[0]}</div></div>`).join("");
+  const map=h.map||m.map||"";
+  if(map!==hlSig){ hlSig=map; box.classList.toggle("noimg",!map);
+    $("hl-bg").innerHTML = map ? `<img class="vfimg" src="mapas/${mapSlug(map)}.jpg" alt="" onerror="document.getElementById('hl').classList.add('noimg');this.remove()">` : ""; }
+  requestAnimationFrame(()=>fit($("hl-nick"),13));
+}
+
 /* ---------- relógio e contagem ---------- */
 function tick(){
   const now=new Date();
@@ -717,7 +848,7 @@ function tick(){
 setInterval(tick,500);
 
 /* ---------- plano B: teclado ---------- */
-const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final","6":"veto","7":"champion"};
+const KEYS={"1":"live","2":"bracket","3":"vote","4":"next","5":"final","6":"veto","7":"champion","8":"predict","9":"highlight"};
 document.addEventListener("keydown",e=>{
   if(KEYS[e.key]){ localScreen=KEYS[e.key]; render(); }
   if(e.key==="0"){ localScreen=null; render(); }
@@ -734,6 +865,7 @@ document.addEventListener("keydown",e=>{
     if(e.key==="k"){ playWin({team_id:1,match_id:5}); }
     if(e.key==="l"){ const f=db.matches.find(x=>x.bracket_round===3); f.team_a=1; f.team_b=4; f.winner=1; f.series_a=2; f.series_b=1; f.status="done"; playWin({team_id:1,match_id:f.id}); render(); }
     if(e.key==="n"&&m){ const pool=db.state.map_pool; if(!m.veto_first) m.veto_first="a"; const st=vetoSteps(pool.length,m.best_of); const i=m.veto.length; if(i<pool.length){ const left=pool.filter(p=>!m.veto.some(v=>v.map===p)); m.veto.push({map:left[Math.floor(Math.random()*left.length)],action:st[i],team:vetoTeamAt(i,m.veto_first)}); const l2=pool.filter(p=>!m.veto.some(v=>v.map===p)); if(l2.length===1) m.veto.push({map:l2[0],action:"decider",team:null}); } else { m.veto=[]; } render(); }
+    if(e.key==="p"&&m){ db.predictions.push({match_id:m.id,team_id:Math.random()<.5?m.team_a:m.team_b,voter:"r"+Math.random()}); render(); }
     if(e.key==="x"){ const p=db.polls[0]; p.status=p.status==="revealed"?"open":"revealed"; renderVote(); }
   }
 });
@@ -755,11 +887,16 @@ function demoData(){
   const votes=[]; const add=(c,p,n)=>{for(let i=0;i<n;i++)votes.push({poll_id:1,category:c,player_id:p});};
   add("mvp",1,11);add("mvp",3,7);add("mvp",38,4);add("mvp",2,2);add("troll",39,9);add("troll",5,6);add("troll",36,3);
   const q=new URLSearchParams(location.search);
-  matches.forEach(x=>{x.veto=[];x.veto_first=null;});
-  return {teams,players,matches,polls,votes,state:{screen:q.get("s")||"live",match_id:+(q.get("m")||2),poll_id:1,countdown_to:new Date(Date.now()+272000).toISOString(),map_pool:["Abyss","Ascent","Bind","Corrode","Haven","Lotus","Sunset"]}};
+  matches.forEach(x=>{x.veto=[];x.veto_first=null;x.pred_status="closed";x.highlight=null;});
+  matches[1].pred_status="open"; matches[0].highlight={player_id:1,agent:"Jett",k:24,d:11,a:6,acs:312,map:"Ascent"};
+  const fans=[{voter:"u1",nick:"Profeta"},{voter:"u2",nick:"Bola8"},{voter:"u3",nick:"Mãe Diná"}];
+  const predictions=[]; for(let i=0;i<23;i++) predictions.push({match_id:2,team_id:i%3?4:5,voter:"x"+i});
+  predictions.push({match_id:1,team_id:1,voter:"u1"},{match_id:1,team_id:1,voter:"u2"},{match_id:1,team_id:8,voter:"u3"});
+  return {teams,players,matches,polls,votes,predictions,fans,state:{screen:q.get("s")||"live",match_id:+(q.get("m")||2),poll_id:1,countdown_to:new Date(Date.now()+272000).toISOString(),map_pool:["Abyss","Ascent","Bind","Corrode","Haven","Lotus","Sunset"]}};
 }
 
 /* ---------- início ---------- */
+document.body.classList.toggle("style-vci", MAP_STYLE!=="original");
 if(DEMO){ loadAll(); }
 else { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); loadAll(); subscribe(); setInterval(loadAll, 60000); }
 </script>
