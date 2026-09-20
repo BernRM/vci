@@ -145,6 +145,9 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
 
 <section>
   <h2>Destaque da partida</h2>
+  <label for="hlRiot">Riot ID de um jogador da partida</label>
+  <div class="grid g2"><input type="text" id="hlRiot" placeholder="Nome#TAG" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn" id="hlFetch">Buscar partida</button></div>
+  <div id="hlApi"></div>
   <label>Jogador</label><select id="hlPlayer"></select>
   <label>Agente</label><input type="text" id="hlAgent" list="agents" placeholder="Ex.: Jett">
   <datalist id="agents"><option>Astra</option><option>Breach</option><option>Brimstone</option><option>Chamber</option><option>Clove</option><option>Cypher</option><option>Deadlock</option><option>Fade</option><option>Gekko</option><option>Harbor</option><option>Iso</option><option>Jett</option><option>KAY/O</option><option>Killjoy</option><option>Miks</option><option>Neon</option><option>Omen</option><option>Phoenix</option><option>Raze</option><option>Reyna</option><option>Sage</option><option>Skye</option><option>Sova</option><option>Tejo</option><option>Veto</option><option>Viper</option><option>Vyse</option><option>Waylay</option><option>Yoru</option></datalist>
@@ -220,7 +223,7 @@ $("logout").onclick=async()=>{await sb.auth.signOut();location.reload();};
 async function showApp(user){
   $("appView").hidden=false; $("who").textContent=user.email;
   const adm=await sb.rpc("is_admin"); if(!adm.error && adm.data!==true) toast("Este usuário não tem permissão de admin",true);
-  await loadAll(); subscribe();
+  await loadAll(); subscribe(); loadKey();
 }
 
 /* ---------- dados ---------- */
@@ -296,8 +299,10 @@ function renderHlCtl(){
   const keep=sel.value;   // ponytail: render() roda a cada voto/palpite/placar; sem isso a escolha em curso some
   sel.innerHTML=`<option value="">Escolha</option>`+ps.map(p=>{const t=team(p.team_id)||{};return `<option value="${p.id}">${esc(p.nick)} · ${esc(t.tag||"")}</option>`;}).join("");
   sel.value = ps.some(p=>String(p.id)===keep) ? keep : (h.player_id?String(h.player_id):"");
+  // valores recem-buscados da API ficam travados ate serem salvos (ai h passa a ser igual) ou editados
+  if(hlApiFill && ["agent","k","d","a","acs"].every(k=>String(h[k]??"")===String(hlApiFill[k]??""))) hlApiFill=null;
   // mostrando o destaque já salvo: traz as stats de volta, senão editar apagaria tudo
-  if(h.player_id && sel.value===String(h.player_id))
+  if(!hlApiFill && h.player_id && sel.value===String(h.player_id))
     [["hlAgent",h.agent],["hlK",h.k],["hlD",h.d],["hlA",h.a],["hlACS",h.acs]].forEach(([id,v])=>{
       const el=$(id); if(document.activeElement!==el) el.value=v??"";
     });
@@ -352,6 +357,78 @@ $("hlShow").onclick=async()=>{
   const map=m.map||(order.length?order[Math.max(0,Math.min(order.length-1,m.series_a+m.series_b-1))].map:null);
   await setMatch({highlight:{player_id:pid,agent:$("hlAgent").value.trim().slice(0,20)||null,k:num("hlK"),d:num("hlD"),a:num("hlA"),acs:num("hlACS"),map}},"Destaque salvo");
   await setState({screen:"highlight"});render();
+};
+
+/* ---------- destaque pela API da HenrikDev ---------- */
+const HDEV="https://api.henrikdev.xyz/valorant/v4/matches/br/pc/";
+let hdevKey=null, hlApiFill=null, hlMatches=[];
+async function loadKey(){
+  if(hdevKey) return hdevKey;
+  const r=await sb.from("app_secrets").select("value").eq("name","henrikdev").maybeSingle();
+  hdevKey=(r.data&&r.data.value)||null; return hdevKey;
+}
+const isCustom=m=>((m.metadata||{}).queue||{}).name==="Custom Game";
+const nRounds=m=>(m.rounds||[]).length||(m.teams||[]).reduce((s,t)=>s+((t.rounds||{}).won||0),0);
+const acsOf=(m,p)=>Math.round((((p.stats||{}).score)||0)/(nRounds(m)||1));
+
+$("hlRiot").value=localStorage.getItem("vci-riot")||"";
+$("hlFetch").onclick=async()=>{
+  const raw=$("hlRiot").value.trim(), i=raw.lastIndexOf("#");
+  if(i<1||i===raw.length-1){ toast("Use o formato Nome#TAG",true); return; }
+  hlApiFill=null; hlMatches=[];
+  const key=await loadKey();
+  if(!key){ $("hlApi").innerHTML='<p class="hint">Chave da API não encontrada. Confira app_secrets no Supabase.</p>'; return; }
+  $("hlFetch").disabled=true; $("hlApi").innerHTML='<p class="hint">Buscando…</p>';
+  try{
+    const url=HDEV+encodeURIComponent(raw.slice(0,i))+"/"+encodeURIComponent(raw.slice(i+1))+"?size=5";
+    const r=await fetch(url,{headers:{Authorization:key}});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const e=(j.errors||[])[0]||{};
+      $("hlApi").innerHTML='<p class="hint">'+(e.code===22?"Conta não encontrada. Confira o Riot ID.":r.status===429?"Limite da API atingido. Espere um minuto.":"Erro da API: "+esc(e.message||r.status))+'</p>';
+      return;
+    }
+    localStorage.setItem("vci-riot",raw);
+    hlMatches=(j.data||[]).slice().sort((a,b)=>(isCustom(b)?1:0)-(isCustom(a)?1:0)); // personalizadas primeiro; sort estavel mantem a ordem do tempo
+    renderApiMatches();
+  }catch(err){ $("hlApi").innerHTML='<p class="hint">Falha de rede: '+esc(err.message)+'</p>'; }
+  finally{ $("hlFetch").disabled=false; }
+};
+
+function renderApiMatches(){
+  if(!hlMatches.length){ $("hlApi").innerHTML='<p class="hint">Nenhuma partida encontrada.</p>'; return; }
+  $("hlApi").innerHTML='<p class="hint">Escolha a partida:</p>'+hlMatches.map((m,i)=>{
+    const md=m.metadata||{}, sc=(m.teams||[]).map(t=>esc(t.team_id)+" "+((t.rounds||{}).won??"?")).join(" x ");
+    const dt=md.started_at?new Date(md.started_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+    return '<button class="btn '+(isCustom(m)?"dark":"")+'" style="width:100%;margin-top:6px;text-align:left" data-mi="'+i+'">'
+      +esc((md.queue||{}).name||"?")+' · '+esc((md.map||{}).name||"?")+' · '+sc
+      +'<br><small style="opacity:.75">'+esc(dt)+' · '+(m.players||[]).length+((m.players||[]).length===1?' jogador</small></button>':' jogadores</small></button>');
+  }).join("");
+}
+
+function renderApiPlayers(mi){
+  const m=hlMatches[mi], md=m.metadata||{}, ps=m.players||[], rd=nRounds(m);
+  const vazia=ps.length<=1||ps.every(p=>!((p.stats||{}).score));
+  let html='<p class="hint">'+esc((md.map||{}).name||"")+' · '+ps.length+(ps.length===1?' jogador · ':' jogadores · ')+rd+(rd===1?' rodada</p>':' rodadas</p>');
+  if(vazia) html+='<p class="hint" style="color:var(--red)">Esta partida veio sem dados, provavelmente encerrada antes do fim. Preencha à mão.</p>';
+  html+=ps.map((p,i)=>'<button class="btn" style="width:100%;margin-top:6px;text-align:left" data-pi="'+i+'" data-mi="'+mi+'">'
+    +esc(p.name+"#"+p.tag)+' · '+esc(p.team_id||"")+' · '+esc((p.agent||{}).name||"")
+    +'<br><small style="opacity:.75">'+((p.stats||{}).kills??"?")+' / '+((p.stats||{}).deaths??"?")+' / '+((p.stats||{}).assists??"?")+' · '+acsOf(m,p)+' ACS</small></button>').join("");
+  html+='<button class="btn" style="width:100%;margin-top:8px" data-back="1">Voltar às partidas</button>';
+  $("hlApi").innerHTML=html;
+}
+
+$("hlApi").onclick=e=>{
+  const b=e.target.closest("[data-mi],[data-back]"); if(!b) return;
+  if(b.dataset.back){ renderApiMatches(); return; }
+  if(b.dataset.pi===undefined){ renderApiPlayers(+b.dataset.mi); return; }
+  const m=hlMatches[+b.dataset.mi], p=(m.players||[])[+b.dataset.pi], s=p.stats||{};
+  $("hlAgent").value=(p.agent||{}).name||"";
+  $("hlK").value=s.kills??""; $("hlD").value=s.deaths??""; $("hlA").value=s.assists??""; $("hlACS").value=acsOf(m,p);
+  hlApiFill={agent:$("hlAgent").value,k:$("hlK").value,d:$("hlD").value,a:$("hlA").value,acs:$("hlACS").value}; // antes do setMatch, que dispara render()
+  const mp=((m.metadata||{}).map||{}).name||"";
+  if(mp && !$("mapIn").value.trim()) setMatch({map:mp},"Mapa: "+mp);
+  toast(p.name+" carregado. Escolha o jogador da VCI.");
 };
 
 $("screens").onclick=e=>{const s=e.target.dataset.s;if(!s)return;db.state.screen=s;render();setState({screen:s});};
