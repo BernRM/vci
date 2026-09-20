@@ -179,6 +179,27 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .vc .ix,.vc .st{position:relative;z-index:2}
 .vdimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.15);mix-blend-mode:multiply;opacity:.28;z-index:-1}
 .vdone{isolation:isolate}
+.vfull,.vtri{position:absolute;inset:0;overflow:hidden}
+.vfull{background:var(--ink)}
+.vfimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 10s ease-out both}
+@keyframes kb{from{transform:scale(1.14)}to{transform:scale(1)}}
+.vcap{position:absolute;left:0;bottom:0;z-index:2;background:var(--paper);text-align:left;padding:1.4rem 3rem .8rem 2.2rem;border-top:.4rem solid var(--ink);border-right:.4rem solid var(--ink)}
+.vcap .k{font-weight:700;font-size:2.2rem;color:var(--red)}
+.vfull .vcap .big{font-size:13rem;margin:0}
+.vfull.noimg{background:var(--paper)}
+.vfull.noimg .vcap{left:50%;bottom:50%;transform:translate(-50%,50%);border:0;text-align:center;padding:0;background:none}
+.vfull.noimg .vcap .big{font-size:21rem}
+.veto.done .vcap{animation:inL .7s .45s cubic-bezier(.2,.8,.2,1) both}
+.vfull.noimg .vcap{animation:none}
+.vtri{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;background:var(--red)}
+.vpan{position:relative;overflow:hidden;background:var(--ink)}
+.vpan.noimg{background:var(--paper)}
+.vpan .vcap{right:0;border-right:0;padding:1.1rem 1.6rem .6rem}
+.vpan .vcap .k{font-size:1.8rem}
+.vpan .vcap .big{font-size:8rem;margin:0}
+.vpan.noimg .vcap{top:50%;bottom:auto;transform:translateY(-50%);border:0;background:none;text-align:center}
+.veto.done .vpan{animation:inD .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 280ms + 150ms)}
+.veto.done .vpan .vcap{animation-delay:calc(var(--i) * 280ms + 600ms)}
 .vc .ix{font-weight:700;font-size:1.5rem;color:var(--gray)}
 .vc .st{font-weight:700;font-size:1.6rem;position:relative;z-index:2}
 .vc.ban{opacity:.5}
@@ -589,6 +610,8 @@ function vetoSteps(n,bo){
 }
 const vetoTeamAt=(i,first)=> i%2===0 ? first : (first==="a"?"b":"a");
 const mapSlug=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-");
+const mapImgFull=s=>`<img class="vfimg" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">`;
+let vdSig=null;
 const mapImg=(s,cls)=>s?`<img class="${cls}" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="this.remove()">`:"";
 let vetoPrev=null, vetoDoneT=null;
 function renderVeto(m){
@@ -611,13 +634,17 @@ function renderVeto(m){
     return `<div class="vc ${cls}" data-a="u" style="--i:${i}">${mapImg(mp,"vimg")}<div class="ix">${String(i+1).padStart(2,"0")}</div><div class="nm">${esc(mp)}</div><div class="st">${st}</div></div>`;
   }).join("");
   const order = m.best_of>1 ? veto.filter(v=>v.action!=="ban") : veto.filter(v=>v.action==="decider");
-  $("vt-done").innerHTML = m.best_of>1
-    ? `<div class="k">Mapas da série</div><div class="order">${order.map((v,i)=>`<div style="--i:${i}">Mapa ${i+1}<b>${esc(v.map)}</b>${v.team?"escolha de "+esc(tagOf(v.team)):"decisivo"}</div>`).join("")}</div>`
-    : `${mapImg(order[0]&&order[0].map,"vdimg")}<div class="k">Mapa da partida</div><div class="big bebas misreg">${esc(order[0]?order[0].map:"")}</div>`;
+  const sig=m.id+"|"+m.best_of+"|"+order.map(v=>v.map+(v.team||"")).join(",");
+  if(sig!==vdSig){
+    vdSig=sig;
+    $("vt-done").innerHTML = m.best_of>1
+      ? `<div class="vtri">${order.map((v,i)=>`<div class="vpan" style="--i:${i}">${mapImgFull(v.map)}<div class="vcap"><div class="k">Mapa ${i+1} · ${v.team?"escolha de "+esc(tagOf(v.team)):"decisivo"}</div><div class="big bebas misreg">${esc(v.map)}</div></div></div>`).join("")}</div>`
+      : (order[0] ? `<div class="vfull">${mapImgFull(order[0].map)}<div class="vcap"><div class="k">Mapa da partida</div><div class="big bebas misreg">${esc(order[0].map)}</div></div></div>` : "");    requestAnimationFrame(()=>document.querySelectorAll("#vt-done .vpan .big").forEach(el=>fit(el,8)));
+  }
   if(!done){ clearTimeout(vetoDoneT); vetoDoneT=null; box.classList.remove("done"); }
   else if(!box.classList.contains("done") && !vetoDoneT){
     const delay = (vetoPrev && vetoPrev.id===m.id && !vetoPrev.done) ? 1800 : 0;
-    vetoDoneT=setTimeout(()=>{ box.classList.add("done"); vetoDoneT=null; }, delay);
+    vetoDoneT=setTimeout(()=>{ box.classList.add("done"); vetoDoneT=null; requestAnimationFrame(()=>document.querySelectorAll("#vt-done .vpan .big").forEach(el=>fit(el,8))); }, delay);
   }
   vetoPrev={id:m.id,n:veto.length,done};
 }

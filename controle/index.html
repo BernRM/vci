@@ -52,7 +52,7 @@ label{display:block;font-size:14px;color:var(--gray);margin:10px 0 4px}
 .counts div{border:2px solid var(--ink);padding:8px}
 .counts b{display:block;font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:28px}
 details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
-.mrow{display:grid;grid-template-columns:70px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px;font-size:14px}
+.mrow{display:grid;grid-template-columns:62px 1fr 1fr 70px;gap:6px;align-items:center;margin-bottom:6px;font-size:14px}
 .mrow select{min-height:40px;padding:6px;font-size:15px}
 .hint{font-size:14px;color:var(--gray);margin-top:6px}
 </style>
@@ -274,7 +274,7 @@ function renderPoll(){
 }
 function renderBracketEd(){
   const opts=sel=>`<option value="">A definir</option>`+db.teams.map(t=>`<option value="${t.id}" ${t.id===sel?"selected":""}>${esc(t.tag)}</option>`).join("");
-  $("bracketEd").innerHTML=db.matches.map(m=>`<div class="mrow"><span>${rName(m.bracket_round)} ${m.slot}</span><select data-m="${m.id}" data-k="team_a">${opts(m.team_a)}</select><select data-m="${m.id}" data-k="team_b">${opts(m.team_b)}</select></div>`).join("")
+  $("bracketEd").innerHTML=db.matches.map(m=>`<div class="mrow"><span>${rName(m.bracket_round)} ${m.slot}</span><select data-m="${m.id}" data-k="team_a">${opts(m.team_a)}</select><select data-m="${m.id}" data-k="team_b">${opts(m.team_b)}</select><select data-m="${m.id}" data-k="best_of"><option value="1" ${m.best_of===1?"selected":""}>MD1</option><option value="3" ${m.best_of===3?"selected":""}>MD3</option></select></div>`).join("")
    +`<p class="hint">Mudou aqui, muda no telão. Use pra montar a chave depois do sorteio.</p>`;
 }
 
