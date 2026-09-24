@@ -41,10 +41,10 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .screen.on{display:block}
 
 /* PLACAR */
-.score{position:absolute;left:4rem;right:4rem;top:13rem;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3rem}
+.score{position:absolute;left:4rem;right:4rem;top:13rem;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:3rem}
 .team{display:flex;flex-direction:column;gap:.6rem}
 .team.b{align-items:flex-end;text-align:right}
-.team .tag{font-size:11rem}
+.team .tag{font-size:11rem;white-space:nowrap}
 .team .name{font-size:2.6rem;font-weight:700}
 .side{display:inline-block;font-weight:700;font-size:1.6rem;padding:.2rem 1rem;border:.25rem solid var(--ink);margin-top:.6rem}
 .side.atk{background:var(--ink);color:var(--paper)}
@@ -100,17 +100,17 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 /* PRÓXIMA */
 .next{position:absolute;left:4rem;right:4rem;top:12rem;text-align:center}
 .next .lbl{font-weight:700;font-size:2.4rem;color:var(--gray)}
-.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3rem;margin-top:3rem}
-.vs .tag{font-size:13rem}
+.vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:3rem;margin-top:3rem}
+.vs .tag{font-size:13rem;white-space:nowrap}
 .vs .name{font-weight:700;font-size:2.4rem}
 .vs .x{font-size:7rem;color:var(--red)}
 .cd{margin-top:3.4rem;font-size:10rem}
 .cd.zero{color:var(--red)}
 
 /* ENCERRAMENTO */
-.final{position:absolute;left:4rem;right:4rem;top:11rem;bottom:6rem;display:grid;grid-template-columns:1.2fr 1fr;gap:5rem;align-items:center}
+.final{position:absolute;left:4rem;right:4rem;top:11rem;bottom:6rem;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:5rem;align-items:center}
 .champ .lbl{font-weight:700;font-size:2.4rem;color:var(--red)}
-.champ .tag{font-size:17rem}
+.champ .tag{font-size:17rem;white-space:nowrap}
 .champ .name{font-weight:700;font-size:3rem}
 .champ .roster{font-weight:600;font-size:1.8rem;color:var(--gray);margin-top:1rem}
 .awards{display:flex;flex-direction:column;gap:2.4rem}
@@ -166,9 +166,9 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 
 /* ===== VETO ===== */
 .veto{position:absolute;left:4rem;right:4rem;top:11.5rem;bottom:7rem}
-.vhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2.4rem}
-.vt{font-size:5rem}
-.vturn{font-weight:700;font-size:2.4rem}
+.vhead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2rem;align-items:baseline;margin-bottom:2.4rem}
+.vt{font-size:5rem;white-space:nowrap}
+.vturn{font-weight:700;font-size:2.4rem;white-space:nowrap;max-width:46rem;text-align:right}
 .vturn b{color:var(--red)}
 .vturn.go{animation:pulse 1.4s ease-in-out infinite}
 .vcards{display:grid;gap:1.4rem;height:29rem}
@@ -205,7 +205,7 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .veto.done .vpan{animation:inD .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 280ms + 150ms)}
 .veto.done .vpan .vcap{animation-delay:calc(var(--i) * 280ms + 600ms)}
 .vc .ix{font-weight:700;font-size:1.5rem;color:var(--gray)}
-.vc .st{font-weight:700;font-size:1.6rem;position:relative;z-index:2}
+.vc .st{font-weight:700;font-size:1.6rem;position:relative;z-index:2;line-height:1.1;overflow-wrap:anywhere}
 .vc.ban{opacity:.5}
 .vc.ban .nm{text-decoration:line-through;text-decoration-thickness:.3rem}
 .vc.ban::after{content:"";position:absolute;z-index:1;left:-30%;right:-30%;top:44%;height:2rem;background:var(--red);transform:rotate(-58deg)}
@@ -491,17 +491,19 @@ const DEMO = new URLSearchParams(location.search).has("demo");
 let db = {teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{screen:"next"}};
 let localScreen = null;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function fit(el,maxRem,tent){
+function fit(el,maxRem,o){
+  o=o||{}; cancelAnimationFrame(el._fr);
   let s=maxRem; el.style.fontSize=s+"rem";
   const pe=el.parentElement; if(!pe) return;
-  const cs=getComputedStyle(pe); const w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+  // self: compara com a propria caixa (item de grade); padrao: compara com a largura do pai
+  let w; if(o.self) w=el.clientWidth; else { const cs=getComputedStyle(pe); w=pe.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); }
   // a troca de tela deixa a secao escondida por ~520ms; medir ali da largura 0 e o texto nunca encolhia.
   // ponytail: tenta de novo por ate ~1s de quadros, o suficiente pra cobrir a transicao.
-  if(w<=0){ if(el.isConnected && (tent||0)<60) requestAnimationFrame(()=>fit(el,maxRem,(tent||0)+1)); return; }
+  if(w<=0){ if(el.isConnected && (o.t||0)<60) el._fr=requestAnimationFrame(()=>fit(el,maxRem,{...o,t:(o.t||0)+1})); return; }
   // ponytail: scrollWidth é inteiro e w é fracionário (849 > 848.8 seria sempre verdade,
   // encolhendo o texto até o piso). Arredondar pra cima compara maçã com maçã.
-  const lim=Math.ceil(w);
-  while(el.scrollWidth>lim && s>2.5){ s-=0.25; el.style.fontSize=s+"rem"; }
+  const lim=Math.ceil(w), min=o.min||2.5;
+  while(el.scrollWidth>lim && s>min){ s-=0.25; el.style.fontSize=s+"rem"; }
 }
 function bump(el){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
 function replay(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
@@ -588,6 +590,7 @@ function renderLive(m){
   if(!m) return;
   const A=team(m.team_a)||{}, B=team(m.team_b)||{};
   setText("l-tagA",A.tag||"—"); setText("l-nameA",A.name); setText("l-tagB",B.tag||"—"); setText("l-nameB",B.name);
+  requestAnimationFrame(()=>{ fit($("l-tagA"),11); fit($("l-tagB"),11); });
   const pv=renderLive.prev;
   const same = pv && pv.id===m.id;
   if(same && pv.a!==m.score_a){ bump($("l-sA")); if(m.score_a>pv.a) replay(document.querySelector(".team.a"),"scored"); }
@@ -694,12 +697,14 @@ function renderNext(m){
   const A=team(m.team_a)||{}, B=team(m.team_b)||{};
   setText("n-lbl","Próxima partida · "+matchLabel(m));
   setText("n-tagA",A.tag||"A definir"); setText("n-nameA",A.name); setText("n-tagB",B.tag||"A definir"); setText("n-nameB",B.name);
+  requestAnimationFrame(()=>{ fit($("n-tagA"),13); fit($("n-tagB"),13); });
 }
 
 function renderFinal(){
   const R=maxRound(); const fm=db.matches.find(x=>x.bracket_round===R);
   const ch = fm&&fm.winner ? team(fm.winner) : null;
   setText("f-tag", ch?ch.tag:"—"); setText("f-name", ch?ch.name:"A definir");
+  requestAnimationFrame(()=>fit($("f-tag"),17));
   setText("f-roster", ch? db.players.filter(p=>p.team_id===ch.id&&!p.is_sub).map(p=>p.nick).join(" · ") : "");
   const g=db.polls.filter(p=>!p.match_id).sort((a,b)=>b.id-a.id)[0];
   const aw=$("f-awards");
@@ -745,11 +750,12 @@ function renderVeto(m){
   if(!m.veto_first){ turn.textContent="Sorteio de quem começa"; turn.classList.remove("go"); }
   else if(!done){ const i=veto.length; turn.innerHTML=`Vez de <b>${esc(tagOf(vetoTeamAt(i,m.veto_first)))}</b>: ${steps[i]==="pick"?"escolher":"banir"}`; turn.classList.add("go"); }
   else { turn.textContent="Veto concluído"; turn.classList.remove("go"); }
+  requestAnimationFrame(()=>{ fit($("vt-title"),5,{self:true,min:2}); fit(turn,2.4,{self:true,min:1.4}); });
   const newest = vetoPrev && vetoPrev.id===m.id && veto.length>vetoPrev.n ? veto.slice(vetoPrev.n).map(v=>v.map) : [];
   const cards=$("vt-cards"); cards.style.gridTemplateColumns=`repeat(${Math.max(pool.length,1)},minmax(0,1fr))`;
   cards.innerHTML=pool.map((mp,i)=>{
     const v=byMap[mp]; let cls="", st="";
-    if(v){ if(v.action==="ban"){cls="ban";st="BAN · "+esc(tagOf(v.team));} else if(v.action==="pick"){cls="pick";st="PICK · "+esc(tagOf(v.team));} else {cls="dec";st="DECISIVO";} }
+    if(v){ if(v.action==="ban"){cls="ban";st="BAN<br>"+esc(tagOf(v.team));} else if(v.action==="pick"){cls="pick";st="PICK<br>"+esc(tagOf(v.team));} else {cls="dec";st="DECISIVO";} }
     if(newest.includes(mp)) cls+=" hit";
     return `<div class="vc ${cls}" data-a="u" style="--i:${i}">${mapImg(mp,"vimg")}<div class="ix">${String(i+1).padStart(2,"0")}</div><div class="nm">${esc(mp)}</div><div class="st">${st}</div></div>`;
   }).join("");
@@ -838,6 +844,7 @@ function renderPredict(m){
   if(!m) return;
   const A=team(m.team_a)||{}, B=team(m.team_b)||{};
   setText("p-tagA",A.tag||"—"); setText("p-nameA",A.name); setText("p-tagB",B.tag||"—"); setText("p-nameB",B.name);
+  requestAnimationFrame(()=>{ fit($("p-tagA"),10); fit($("p-tagB"),10); });
   const ps=db.predictions.filter(p=>p.match_id===m.id);
   const na=ps.filter(p=>p.team_id===m.team_a).length, nb=ps.filter(p=>p.team_id===m.team_b).length, tot=na+nb;
   const pa=tot?Math.round(na/tot*100):0, pb=tot?100-pa:0;
