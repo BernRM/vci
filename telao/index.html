@@ -581,7 +581,7 @@ function render(){
   const scr = localScreen || db.state.screen || "next";
   showScreen(scr);
   const m = db.matches.find(x=>x.id===db.state.match_id);
-  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final", predict:"Palpites · "+matchLabel(m), highlight:matchLabel(m), scoreboard:"Placar · "+matchLabel(m)}[scr];
+  const phase = {live:matchLabel(m), bracket:"Chaveamento", vote:"Votação", next:matchLabel(m), final:"Encerramento", veto:matchLabel(m), champion:"Grande final", predict:"Palpites · "+matchLabel(m), highlight:matchLabel(m), scoreboard:"Resultado final · "+matchLabel(m)}[scr];
   setText("phase", phase);
   renderLive(m); renderBracket(); renderVote(); renderNext(m); renderFinal(); renderVeto(m); renderChampion(); renderPredict(m); renderHighlight(m); renderScoreboard(m); handleEvent();
 }
@@ -890,8 +890,8 @@ function renderHighlight(m){
 /* ---------- placar completo ---------- */
 function renderScoreboard(m){
   const sb=m&&m.scoreboard;
-  if(!sb||!(sb.rows||[]).length){ setText("sb-map","Placar"); setText("sb-score","");
-    $("sb-a").innerHTML=`<div class="sbnone">Nenhum placar carregado</div>`; $("sb-b").innerHTML=""; return; }
+  if(!sb||!(sb.rows||[]).length){ setText("sb-map","Resultado final"); setText("sb-score","");
+    $("sb-a").innerHTML=`<div class="sbnone">Nenhum resultado carregado</div>`; $("sb-b").innerHTML=""; return; }
   setText("sb-map", sb.map || (m&&m.map) || "");
   const lados=["Red","Blue"], rows=sb.rows||[];
   // side_a diz qual lado da partida do jogo corresponde ao time A da chave
