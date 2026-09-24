@@ -542,6 +542,13 @@ $("cdClear").onclick=()=>setState({countdown_to:null},"Contagem removida");
 $("bracketEd").addEventListener("change",e=>{const s=e.target;if(!s.dataset.m)return;run(sb.from("matches").update({[s.dataset.k]:s.value?+s.value:null}).eq("id",+s.dataset.m),"Chave atualizada");});
 
 /* ---------- Challengermode ---------- */
+// quem falta se inscrever: times do Tally que ainda nao estao na Challengermode, e o contrario
+function cmFalta(f){
+  f=f||{}; const out=[];
+  if((f.tallyWithoutCm||[]).length) out.push('<div style="color:var(--red)">Faltam se inscrever na Challengermode: <b>'+f.tallyWithoutCm.map(esc).join(", ")+'</b></div>');
+  if((f.cmWithoutTally||[]).length) out.push('<div>Só na Challengermode (sem inscrição no Tally): <b>'+f.cmWithoutTally.map(esc).join(", ")+'</b></div>');
+  return out.join("");
+}
 let syncCfg=null, syncBusy=false, cmShown=null; // cmShown: resultado da ultima acao manual, fica na tela ate a proxima sincronizacao
 async function loadSync(){
   const r=await sb.from("sync_config").select("enabled,last_sync_at,last_status,last_message,last_result").eq("id",1).maybeSingle();
@@ -558,7 +565,7 @@ function renderSync(){
   const cor=c.last_status==="ok"?"":' style="color:var(--red)"';
   const avisos=((c.last_result||{}).avisos||[]).concat((c.last_result||{}).conflitos||[]);
   if(!syncBusy) $("cmOut").innerHTML=cmShown ? cmShown : c.last_status
-    ? '<div'+cor+'><b>Última: '+esc(c.last_status)+'</b> · '+esc(quando)+'<br>'+esc(c.last_message||"")+'</div>'+avisos.map(a=>'<div style="color:var(--red)">• '+esc(a)+'</div>').join("")
+    ? '<div'+cor+'><b>Última: '+esc(c.last_status)+'</b> · '+esc(quando)+'<br>'+esc(c.last_message||"")+'</div>'+avisos.map(a=>'<div style="color:var(--red)">• '+esc(a)+'</div>').join("")+cmFalta((c.last_result||{}).faltando)
     : "Ainda não sincronizou.";
 }
 async function runSync(dry){
@@ -577,6 +584,7 @@ async function runSync(dry){
     if(d.plano) linhas.push("Mudaria: "+d.plano.partidasNovas+" partida(s) nova(s), "+d.plano.partidasAlteradas+" alterada(s), "+d.plano.timesVinculados+" time(s) vinculado(s), "+d.plano.timesNovos+" novo(s).");
     linhas.push("Times na Challengermode: "+(d.lineups??0)+" · estado do campeonato: "+esc(d.estado||"?"));
     (d.conflitos||[]).concat(d.avisos||[]).forEach(x=>linhas.push('<span style="color:var(--red)">• '+esc(x)+'</span>'));
+    const fl=cmFalta(d.faltando); if(fl) linhas.push(fl);
     show(linhas.join("<br>"));
     if(!dry && d.ok) cmShown=null;   // sincronizou de verdade: passa a mostrar o status gravado no banco
   }catch(e){ show('<div style="color:var(--red)">Falha de rede: '+esc(e.message)+'</div>'); }
