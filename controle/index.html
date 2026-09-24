@@ -193,6 +193,17 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
 </section>
 
 <section>
+  <h2>Challengermode <span id="cmState">—</span></h2>
+  <div class="grid g2">
+    <button class="btn dark" id="cmNow">Sincronizar agora</button>
+    <button class="btn" id="cmDry">Simular (não grava)</button>
+  </div>
+  <button class="btn" style="width:100%;margin-top:8px" id="cmToggle">Sincronização automática: …</button>
+  <div id="cmOut" class="hint" style="margin-top:8px"></div>
+  <p class="hint">Traz a chave, os resultados e os times inscritos da Challengermode. Não apaga nada e só avança: nunca desfaz o que você marcou aqui. <b>Simular</b> mostra o que mudaria sem gravar. Com a automática ligada, sincroniza sozinha a cada minuto; desligue se for editar a chave à mão.</p>
+</section>
+
+<section>
   <h2>Montar chave</h2>
   <details><summary>Editar confrontos</summary><div id="bracketEd" style="margin-top:8px"></div></details>
 </section>
@@ -235,7 +246,7 @@ $("logout").onclick=async()=>{await sb.auth.signOut();location.reload();};
 async function showApp(user){
   $("appView").hidden=false; $("who").textContent=user.email;
   const adm=await sb.rpc("is_admin"); if(!adm.error && adm.data!==true) toast("Este usuário não tem permissão de admin",true);
-  await loadAll(); subscribe(); loadKey();
+  await loadAll(); subscribe(); loadKey(); loadSync();
 }
 
 /* ---------- dados ---------- */
@@ -262,6 +273,7 @@ function subscribe(){
    .on("postgres_changes",{event:"*",schema:"public",table:"predictions"},refresh)
    .on("postgres_changes",{event:"*",schema:"public",table:"fans"},refresh)
    .on("postgres_changes",{event:"*",schema:"public",table:"votes"},async()=>{await loadVotes();renderPoll();})
+   .on("postgres_changes",{event:"*",schema:"public",table:"sync_config"},()=>loadSync())
    .subscribe();
 }
 
@@ -528,6 +540,56 @@ $("cdGo").onclick=()=>{const v=+$("cdIn").value;if(v>0)startCd(v);};
 $("cdClear").onclick=()=>setState({countdown_to:null},"Contagem removida");
 
 $("bracketEd").addEventListener("change",e=>{const s=e.target;if(!s.dataset.m)return;run(sb.from("matches").update({[s.dataset.k]:s.value?+s.value:null}).eq("id",+s.dataset.m),"Chave atualizada");});
+
+/* ---------- Challengermode ---------- */
+let syncCfg=null, syncBusy=false, cmShown=null; // cmShown: resultado da ultima acao manual, fica na tela ate a proxima sincronizacao
+async function loadSync(){
+  const r=await sb.from("sync_config").select("enabled,last_sync_at,last_status,last_message,last_result").eq("id",1).maybeSingle();
+  syncCfg=r.data||null; renderSync();
+}
+function renderSync(){
+  const c=syncCfg;
+  $("cmToggle").disabled=!c||syncBusy; $("cmNow").disabled=!c||syncBusy; $("cmDry").disabled=!c||syncBusy;
+  if(!c){ $("cmState").textContent="indisponível"; $("cmToggle").textContent="Sincronização automática: —"; return; }
+  $("cmToggle").textContent="Sincronização automática: "+(c.enabled?"LIGADA (tocar para desligar)":"DESLIGADA (tocar para ligar)");
+  $("cmToggle").className="btn"+(c.enabled?" on":"");
+  $("cmState").textContent=c.enabled?"automática ligada":"automática desligada";
+  const quando=c.last_sync_at?new Date(c.last_sync_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+  const cor=c.last_status==="ok"?"":' style="color:var(--red)"';
+  const avisos=((c.last_result||{}).avisos||[]).concat((c.last_result||{}).conflitos||[]);
+  if(!syncBusy) $("cmOut").innerHTML=cmShown ? cmShown : c.last_status
+    ? '<div'+cor+'><b>Última: '+esc(c.last_status)+'</b> · '+esc(quando)+'<br>'+esc(c.last_message||"")+'</div>'+avisos.map(a=>'<div style="color:var(--red)">• '+esc(a)+'</div>').join("")
+    : "Ainda não sincronizou.";
+}
+async function runSync(dry){
+  if(syncBusy) return; syncBusy=true; renderSync();
+  const show=h=>{ cmShown=h; $("cmOut").innerHTML=h; };
+  $("cmOut").textContent=dry?"Simulando…":"Sincronizando…";
+  try{
+    const r=await sb.functions.invoke("challengermode-sync",{body:{dryRun:dry}});
+    if(r.error){ show('<div style="color:var(--red)">Falhou: '+esc(r.error.message||"erro")+'</div>'); return; }
+    const d=r.data||{};
+    if(d.erro){ show('<div style="color:var(--red)">Erro: '+esc(d.erro)+'</div>'); return; }
+    const linhas=[];
+    linhas.push('<b>'+(dry?"Simulação":"Sincronização")+(d.ok?" concluída":" não aplicada")+'</b> · '+esc(d.campeonato||""));
+    if(d.bloqueio) linhas.push('<span style="color:var(--red)">'+esc(d.bloqueio)+'</span>');
+    if(d.mensagem) linhas.push(esc(d.mensagem));
+    if(d.plano) linhas.push("Mudaria: "+d.plano.partidasNovas+" partida(s) nova(s), "+d.plano.partidasAlteradas+" alterada(s), "+d.plano.timesVinculados+" time(s) vinculado(s), "+d.plano.timesNovos+" novo(s).");
+    linhas.push("Times na Challengermode: "+(d.lineups??0)+" · estado do campeonato: "+esc(d.estado||"?"));
+    (d.conflitos||[]).concat(d.avisos||[]).forEach(x=>linhas.push('<span style="color:var(--red)">• '+esc(x)+'</span>'));
+    show(linhas.join("<br>"));
+    if(!dry && d.ok) cmShown=null;   // sincronizou de verdade: passa a mostrar o status gravado no banco
+  }catch(e){ show('<div style="color:var(--red)">Falha de rede: '+esc(e.message)+'</div>'); }
+  finally{ syncBusy=false; if(!dry) await loadSync(); else renderSync(); }
+}
+$("cmNow").onclick=()=>runSync(false);
+$("cmDry").onclick=()=>runSync(true);
+$("cmToggle").onclick=async()=>{
+  if(!syncCfg||syncBusy) return; const on=!syncCfg.enabled;
+  if(on && !confirm("Ligar a sincronização automática? A partir de agora a Challengermode passa a preencher a chave, os times e os resultados a cada minuto.")) return;
+  const r=await run(sb.from("sync_config").update({enabled:on}).eq("id",1).select(),on?"Sincronização ligada":"Sincronização desligada");
+  if(r) await loadSync();
+};
 
 boot();
 </script>
