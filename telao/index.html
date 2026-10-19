@@ -526,6 +526,10 @@ function showScreen(scr){
 
 /* ---------- dados ---------- */
 let sb = null;
+// ultimo estado bom fica no navegador: recarregar a pagina sem internet nao deixa o telao em branco
+const CACHE_KEY="vci-telao-cache-v1";
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY,JSON.stringify({db,t:Date.now()})); }catch(e){} }
+function loadCache(){ try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null"); if(c&&c.db&&c.db.state&&(c.db.matches||[]).length){ db=c.db; return true; } }catch(e){} return false; }
 async function loadAll(){
   if(DEMO){ db = demoData(); render(); return; }
   const [t,p,m,po,s,pr,fa] = await Promise.all([
@@ -537,7 +541,7 @@ async function loadAll(){
   if(t.error||m.error||s.error){ $("offline").classList.add("on"); return; }
   $("offline").classList.remove("on");
   db.teams=t.data; db.players=p.data; db.matches=m.data; db.polls=po.data; db.state=s.data; db.predictions=pr.data||[]; db.fans=fa.data||[];
-  await loadVotes(); render();
+  await loadVotes(); saveCache(); render();
 }
 async function loadVotes(){
   if(DEMO) return;
@@ -986,7 +990,7 @@ function demoData(){
 /* ---------- início ---------- */
 document.body.classList.toggle("style-vci", MAP_STYLE!=="original");
 if(DEMO){ loadAll(); }
-else { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); loadAll(); subscribe(); setInterval(loadAll, 60000); }
+else { if(loadCache()) render(); sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); loadAll(); subscribe(); setInterval(loadAll, 30000); window.addEventListener("online",loadAll); }
 </script>
 </body>
 </html>
