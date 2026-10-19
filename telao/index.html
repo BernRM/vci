@@ -862,9 +862,11 @@ function vetoSteps(n,bo){
 }
 const vetoTeamAt=(i,first)=> i%2===0 ? first : (first==="a"?"b":"a");
 const mapSlug=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-");
-const mapImgFull=s=>`<img class="vfimg" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">`;
+const badMap=new Set();   // mapa sem imagem no servidor: nao pede de novo a cada renderizacao
+const mapBad=s=>badMap.has(mapSlug(s));
+const mapImgFull=s=>mapBad(s)?"":`<img class="vfimg" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="badMap.add('${mapSlug(s)}');this.parentElement.classList.add('noimg');this.remove()">`;
 let vdSig=null;
-const mapImg=(s,cls)=>s?`<img class="${cls}" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="this.remove()">`:"";
+const mapImg=(s,cls)=>s&&!mapBad(s)?`<img class="${cls}" src="mapas/${mapSlug(s)}.jpg" alt="" onerror="badMap.add('${mapSlug(s)}');this.remove()">`:"";
 let vetoPrev=null, vetoDoneT=null;
 function renderVeto(m){
   const box=$("veto"); if(!m) return;
@@ -892,8 +894,8 @@ function renderVeto(m){
   if(sig!==vdSig){
     vdSig=sig;
     $("vt-done").innerHTML = m.best_of>1
-      ? `<div class="vtri">${order.map((v,i)=>`<div class="vpan" style="--i:${i}">${mapImgFull(v.map)}<div class="vcap"><div class="k">Mapa ${i+1} · ${v.team?"escolha de "+esc(tagOf(v.team))+" · lado: "+esc(tagOf(v.team==="a"?"b":"a")):"decisivo · lado: sorteio"}</div><div class="big bebas misreg">${esc(v.map)}</div></div></div>`).join("")}</div>`
-      : (order[0] ? `<div class="vfull">${mapImgFull(order[0].map)}<div class="vcap"><div class="k">Mapa da partida${sideBy?" · lado: escolha de "+esc(sideBy):""}</div><div class="big bebas misreg">${esc(order[0].map)}</div></div></div>` : "");    requestAnimationFrame(()=>document.querySelectorAll("#vt-done .vpan .big").forEach(el=>fit(el,8)));
+      ? `<div class="vtri">${order.map((v,i)=>`<div class="vpan${mapBad(v.map)?" noimg":""}" style="--i:${i}">${mapImgFull(v.map)}<div class="vcap"><div class="k">Mapa ${i+1} · ${v.team?"escolha de "+esc(tagOf(v.team))+" · lado: "+esc(tagOf(v.team==="a"?"b":"a")):"decisivo · lado: sorteio"}</div><div class="big bebas misreg">${esc(v.map)}</div></div></div>`).join("")}</div>`
+      : (order[0] ? `<div class="vfull${mapBad(order[0].map)?" noimg":""}">${mapImgFull(order[0].map)}<div class="vcap"><div class="k">Mapa da partida${sideBy?" · lado: escolha de "+esc(sideBy):""}</div><div class="big bebas misreg">${esc(order[0].map)}</div></div></div>` : "");    requestAnimationFrame(()=>document.querySelectorAll("#vt-done .vpan .big").forEach(el=>fit(el,8)));
   }
   if(!done){ clearTimeout(vetoDoneT); vetoDoneT=null; box.classList.remove("done"); }
   else if(!box.classList.contains("done") && !vetoDoneT){
