@@ -55,6 +55,10 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
 .mrow{display:grid;grid-template-columns:62px 1fr 1fr 70px;gap:6px;align-items:center;margin-bottom:6px;font-size:14px}
 .mrow select{min-height:40px;padding:6px;font-size:15px}
 .hint{font-size:14px;color:var(--gray);margin-top:6px}
+.prow{border:2px solid var(--ink);padding:8px;margin-bottom:8px}
+.prow small{display:block;color:var(--gray);font-size:13px}
+.prow .tagwarn{color:var(--red);font-weight:700;font-size:14px}
+input[type=datetime-local]{width:100%;border:3px solid var(--ink);background:#fff;padding:6px;min-height:40px;font-size:15px;border-radius:0}
 </style>
 </head>
 <body>
@@ -84,6 +88,7 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" data-s="predict">Palpites</button>
     <button class="btn" data-s="highlight">Destaque</button>
     <button class="btn" data-s="scoreboard">Resultado final</button>
+    <button class="btn" data-s="roster">Elencos</button>
   </div>
 </section>
 
@@ -94,6 +99,17 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" id="startBtn">Marcar ao vivo</button>
     <button class="btn" id="resetBtn">Zerar placar</button>
   </div>
+  <div class="grid g2" style="margin-top:8px">
+    <button class="btn" id="goNext">Próxima da fila →</button>
+    <button class="btn" id="reopenBtn">Desfazer resultado</button>
+  </div>
+  <p class="hint">“Próxima da fila” escolhe a pendente de menor horário. Quem avança (vencedor e perdedor) é preenchido sozinho ao marcar a vitória.</p>
+</section>
+
+<section>
+  <h2>Elencos <span id="rosInfo"></span></h2>
+  <div id="rosEd"></div>
+  <p class="hint">Jogadores dos dois times da partida atual. Os marcados ⚠ têm Riot ID a confirmar: corrija, toque em Salvar e a marca some do telão. Formato <b>Nome#TAG</b>. Para mostrar no telão, use o botão “Elencos” lá em cima.</p>
 </section>
 
 <section>
@@ -124,7 +140,7 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
     <button class="btn" id="swapBtn">Trocar lados</button>
     <input type="text" id="mapIn" list="maps" placeholder="Mapa">
   </div>
-  <datalist id="maps"><option>Abyss</option><option>Ascent</option><option>Bind</option><option>Breeze</option><option>Corrode</option><option>Fracture</option><option>Haven</option><option>Icebox</option><option>Lotus</option><option>Pearl</option><option>Split</option><option>Sunset</option></datalist>
+  <datalist id="maps"><option>Abyss</option><option>Ascent</option><option>Bind</option><option>Breeze</option><option>Corrode</option><option>Fracture</option><option>Haven</option><option>Icebox</option><option>Lotus</option><option>Pearl</option><option>Split</option><option>Summit</option><option>Sunset</option></datalist>
   <div id="seriesBox" hidden>
     <label>Série (mapas vencidos)</label>
     <div class="pips" id="pips"></div>
@@ -193,6 +209,17 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
 </section>
 
 <section>
+  <h2>Horários <span id="schedInfo"></span></h2>
+  <div id="schedEd"></div>
+  <details style="margin-top:8px"><summary>Trocar o horário de duas partidas</summary>
+    <div class="grid g2" style="margin-top:6px"><select id="swA"></select><select id="swB"></select></div>
+    <button class="btn" style="width:100%;margin-top:8px" id="swGo">Trocar horários</button>
+  </details>
+  <p class="hint">Toque no horário para mudar (fuso de Brasília). A “Próxima partida” do telão segue a ordem dos horários; ▶ marca a próxima da fila.</p>
+</section>
+
+<section>
+  <details><summary>Challengermode · desativada neste evento (não usar)</summary>
   <h2>Challengermode <span id="cmState">—</span></h2>
   <div class="grid g2">
     <button class="btn dark" id="cmNow">Sincronizar agora</button>
@@ -201,6 +228,7 @@ details summary{cursor:pointer;font-size:15px;color:var(--gray);padding:6px 0}
   <button class="btn" style="width:100%;margin-top:8px" id="cmToggle">Sincronização automática: …</button>
   <div id="cmOut" class="hint" style="margin-top:8px"></div>
   <p class="hint">Traz a chave, os resultados e os times inscritos da Challengermode. Não apaga nada e só avança: nunca desfaz o que você marcou aqui. <b>Simular</b> mostra o que mudaria sem gravar. Com a automática ligada, sincroniza sozinha a cada minuto; desligue se for editar a chave à mão.</p>
+  </details>
 </section>
 
 <section>
@@ -222,10 +250,10 @@ const SUPABASE_KEY="sb_publishable_-b4SrV99fAssdfEpz3pdxw_owmHaV_-";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const ALL_MAPS=["Abyss","Ascent","Bind","Breeze","Corrode","Fracture","Haven","Icebox","Lotus","Pearl","Split","Sunset"];
+const ALL_MAPS=["Abyss","Ascent","Bind","Breeze","Corrode","Fracture","Haven","Icebox","Lotus","Pearl","Split","Summit","Sunset"];
 function vetoSteps(n,bo){ if(n<1)return[]; if(bo>1){const s=["ban","ban","pick","pick"];while(s.length<n-1)s.push("ban");return s.slice(0,n-1).concat("decider");} return Array(n-1).fill("ban").concat("decider"); }
 const vetoTeamAt=(i,first)=>i%2===0?first:(first==="a"?"b":"a");
-let db={teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{}};
+let db={teams:[],players:[],matches:[],polls:[],votes:[],predictions:[],fans:[],state:{},priv:{}};
 
 function toast(msg,err){const t=$("toast");t.textContent=msg;t.className="toast on"+(err?" err":"");clearTimeout(t._h);t._h=setTimeout(()=>t.className="toast",2200);}
 async function run(p,ok){const r=await p;if(r.error){toast("Erro: "+r.error.message,true);return null;}if(ok)toast(ok);return r;}
@@ -251,13 +279,14 @@ async function showApp(user){
 
 /* ---------- dados ---------- */
 async function loadAll(){
-  const [t,p,m,po,s,pr,fa]=await Promise.all([
+  const [t,p,m,po,s,pr,fa,pv]=await Promise.all([
     sb.from("teams").select("*").order("seed"),sb.from("players").select("*"),
     sb.from("matches").select("*").order("bracket_round").order("slot"),
     sb.from("polls").select("*").order("id"),sb.from("display_state").select("*").eq("id",1).single(),
-    sb.from("predictions").select("match_id,team_id,voter"),sb.from("fans").select("voter,nick")]);
+    sb.from("predictions").select("match_id,team_id,voter"),sb.from("fans").select("voter,nick"),sb.from("players_private").select("*")]);
   if(s.error){toast("Sem conexão com o banco",true);return;}
   db.teams=t.data;db.players=p.data;db.matches=m.data;db.polls=po.data;db.state=s.data;db.predictions=pr.data||[];db.fans=fa.data||[];
+  db.priv=Object.fromEntries(((pv&&pv.data)||[]).map(x=>[x.player_id,x]));
   await loadVotes(); render();
 }
 async function loadVotes(){
@@ -282,16 +311,34 @@ const team=id=>db.teams.find(t=>t.id===id);
 const cur=()=>db.matches.find(m=>m.id===db.state.match_id);
 const maxRound=()=>Math.max(1,...db.matches.map(m=>m.bracket_round));
 const rName=r=>["Final","Semi","Quartas","Oitavas"][maxRound()-r]||("Fase "+r);
-const mLabel=m=>esc(`${rName(m.bracket_round)} ${m.slot} · ${(team(m.team_a)||{}).tag||"?"} x ${(team(m.team_b)||{}).tag||"?"}${m.status==="done"?" ✓":m.status==="live"?" ●":""}`);
+/*@route-begin*/
+// destino do vencedor/perdedor de m (dupla eliminacao): [{id, field, team}]
+function routeOf(ms,m,w){
+  const l=w===m.team_a?m.team_b:m.team_a, out=[];
+  const put=(dest,team)=>{ const mm=/^(M\d+)-([AB])$/.exec(dest||""); if(!mm||team==null) return;
+    const t=ms.find(x=>x.code===mm[1]); if(t) out.push({id:t.id,field:mm[2]==="A"?"team_a":"team_b",team}); };
+  put(m.win_to,w); put(m.lose_to,l); return out;
+}
+/*@route-end*/
+const TZ="America/Sao_Paulo";
+const slotShort=s=>!s?"?":(s[0]==="W"?"Venc. ":"Perd. ")+s.slice(2);
+const sideTxt=(m,k)=>(team(m["team_"+k])||{}).tag||slotShort(m["src_"+k]);
+const byTime=(a,b)=>(Date.parse(a.scheduled_at)||Infinity)-(Date.parse(b.scheduled_at)||Infinity)||a.bracket_round-b.bracket_round||a.slot-b.slot;
+const nextMatchCtl=()=>db.matches.filter(m=>m.status==="pending").sort(byTime)[0]||null;
+const mName=m=>m.code?`${m.code} · ${m.phase}${m.bracket==="Final"?"":" ("+m.bracket+")"}`:`${rName(m.bracket_round)} ${m.slot}`;
+const mLabel=m=>esc(`${mName(m)} · ${sideTxt(m,"a")} x ${sideTxt(m,"b")}${m.status==="done"?" ✓":m.status==="live"?" ●":""}`);
+const toLocalInput=iso=>{ if(!iso) return ""; const d=new Date(iso); if(isNaN(d)) return "";
+  return new Intl.DateTimeFormat("sv-SE",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(d).replace(" ","T"); };
+const fromLocalInput=v=>new Date(v+":00-03:00").toISOString();
 const setState=(patch,msg)=>{Object.assign(db.state,patch);return run(sb.from("display_state").update({...patch,updated_at:new Date().toISOString()}).eq("id",1).select(),msg).then(r=>{if(r&&!r.data.length)toast("Sem permissão para alterar",true);return r;});};
 const setMatch=(patch,msg)=>{const m=cur();if(!m){toast("Escolha a partida",true);return;}Object.assign(m,patch);render();return run(sb.from("matches").update(patch).eq("id",m.id),msg);};
 
 /* ---------- render ---------- */
 function render(){
   const st=db.state;
-  $("curScreen").textContent="no ar: "+({live:"ao vivo",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento",veto:"veto",champion:"campeão",predict:"palpites",highlight:"destaque",scoreboard:"resultado final"}[st.screen]||"");
+  $("curScreen").textContent="no ar: "+({live:"ao vivo",roster:"elencos",bracket:"chave",vote:"votação",next:"próxima",final:"encerramento",veto:"veto",champion:"campeão",predict:"palpites",highlight:"destaque",scoreboard:"resultado final"}[st.screen]||"");
   document.querySelectorAll("#screens .btn").forEach(b=>b.classList.toggle("on",b.dataset.s===st.screen));
-  const sel=$("matchSel"); sel.innerHTML=db.matches.map(m=>`<option value="${m.id}" ${m.id===st.match_id?"selected":""}>${mLabel(m)}</option>`).join("");
+  const sel=$("matchSel"); sel.innerHTML=[...db.matches].sort(byTime).map(m=>`<option value="${m.id}" ${m.id===st.match_id?"selected":""}>${mLabel(m)}</option>`).join("");
   const m=cur(); const A=m&&team(m.team_a)||{}, B=m&&team(m.team_b)||{};
   $("matchStatus").textContent=m?({pending:"não iniciada",live:"ao vivo",done:"encerrada"}[m.status]):"";
   $("tA").textContent=A.tag||"—";$("tB").textContent=B.tag||"—";
@@ -304,7 +351,7 @@ function render(){
   $("mapWinA").textContent="Mapa p/ "+(A.tag||"A");$("mapWinB").textContent="Mapa p/ "+(B.tag||"B");
   const bo=m&&m.best_of>1; $("seriesBox").hidden=!bo;
   if(bo){const need=Math.ceil(m.best_of/2);const p=n=>Array.from({length:need},(_,i)=>`<span class="pip ${i<n?"w":""}"></span>`).join("");$("pips").innerHTML=`${esc(A.tag||"A")} ${p(m.series_a)} &nbsp;·&nbsp; ${p(m.series_b)} ${esc(B.tag||"B")}`;}
-  renderPoll(); renderBracketEd(); renderVetoCtl(); renderPredCtl(); renderHlCtl(); renderSbCtl();
+  renderPoll(); renderBracketEd(); renderVetoCtl(); renderPredCtl(); renderHlCtl(); renderSbCtl(); renderSchedCtl(); renderRosCtl();
 }
 function renderPredCtl(){
   const m=cur(); if(!m){$("predStatus").textContent="";return;}
@@ -351,7 +398,7 @@ function renderPoll(){
 }
 function renderBracketEd(){
   const opts=sel=>`<option value="">A definir</option>`+db.teams.map(t=>`<option value="${t.id}" ${t.id===sel?"selected":""}>${esc(t.tag)}</option>`).join("");
-  $("bracketEd").innerHTML=db.matches.map(m=>`<div class="mrow"><span>${rName(m.bracket_round)} ${m.slot}</span><select data-m="${m.id}" data-k="team_a">${opts(m.team_a)}</select><select data-m="${m.id}" data-k="team_b">${opts(m.team_b)}</select><select data-m="${m.id}" data-k="best_of"><option value="1" ${m.best_of===1?"selected":""}>MD1</option><option value="3" ${m.best_of===3?"selected":""}>MD3</option></select></div>`).join("")
+  $("bracketEd").innerHTML=db.matches.map(m=>`<div class="mrow"><span>${esc(m.code||rName(m.bracket_round)+" "+m.slot)}</span><select data-m="${m.id}" data-k="team_a">${opts(m.team_a)}</select><select data-m="${m.id}" data-k="team_b">${opts(m.team_b)}</select><select data-m="${m.id}" data-k="best_of"><option value="1" ${m.best_of===1?"selected":""}>MD1</option><option value="3" ${m.best_of===3?"selected":""}>MD3</option></select></div>`).join("")
    +`<p class="hint">Mudou aqui, muda no telão. Use pra montar a chave depois do sorteio.</p>`;
 }
 
@@ -371,7 +418,7 @@ $("vReset").onclick=()=>{const m=cur();if(m&&confirm("Recomeçar o veto desta pa
 $("poolEd").onclick=e=>{const b=e.target.closest("[data-pool]");if(!b)return;let pool=[...(db.state.map_pool||[])];const mp=b.dataset.pool;
   pool=pool.includes(mp)?pool.filter(x=>x!==mp):ALL_MAPS.filter(x=>pool.includes(x)||x===mp);setState({map_pool:pool},"Pool: "+pool.length+" mapas");render();};
 
-$("predOpen").onclick=async()=>{const m=cur();if(!m)return;await setMatch({pred_status:"open"},"Palpites abertos");await setState({screen:"predict"});render();};
+$("predOpen").onclick=async()=>{const m=cur();if(!m)return;if(!m.team_a||!m.team_b){toast("Defina os dois times antes de abrir os palpites",true);return;}await setMatch({pred_status:"open"},"Palpites abertos");await setState({screen:"predict"});render();};
 $("predLock").onclick=()=>setMatch({pred_status:"locked"},"Palpites encerrados");
 $("oracList").onclick=async e=>{const b=e.target.closest("[data-rmfan]");if(!b)return;if(!confirm("Remover este apelido do ranking?"))return;await run(sb.from("fans").delete().eq("voter",b.dataset.rmfan),"Apelido removido");};
 $("hlShow").onclick=async()=>{
@@ -513,16 +560,44 @@ function mapWin(k){const m=cur();if(!m)return;const f="series_"+k;const played=m
   setMatch({[f]:m[f]+1,score_a:0,score_b:0,map:order[played]?order[played].map:null},"Mapa registrado");}
 
 $("winA").onclick=()=>finish("a");$("winB").onclick=()=>finish("b");
+// partidas que recebem time desta (vencedor/perdedor)
+const destinos=m=>[m.win_to,m.lose_to].map(d=>/^(M\d+)-[AB]$/.exec(d||"")).filter(Boolean).map(mm=>db.matches.find(x=>x.code===mm[1])).filter(Boolean);
+async function avancar(m,w){
+  const ch=routeOf(db.matches,m,w);
+  for(const c of ch){
+    const alvo=db.matches.find(x=>x.id===c.id); if(alvo) alvo[c.field]=c.team;   // otimista: o painel ja reflete
+    await run(sb.from("matches").update({[c.field]:c.team}).eq("id",c.id));
+  }
+  render();
+  const txt=ch.map(c=>{const a=db.matches.find(x=>x.id===c.id);return ((team(c.team)||{}).tag||"?")+" → "+(a?a.code:"?");}).join(" · ");
+  if(txt) toast("Avançou: "+txt);
+}
 async function finish(k){
   const m=cur();if(!m)return;const w=k==="a"?m.team_a:m.team_b;const t=team(w);
   if(!t){toast("Time não definido",true);return;}
-  if(!confirm(`Confirmar vitória de ${t.tag}?`))return;
+  const corrigindo=m.status==="done"&&m.winner!=null;
+  if(corrigindo&&m.winner===w){ if(m.code&&confirm(`${t.tag} já é o vencedor de ${m.code}. Reaplicar o avanço dos times na chave?`)) await avancar(m,w); return; }
+  if(!confirm(corrigindo?`CORRIGIR o vencedor para ${t.tag}?`:`Confirmar vitória de ${t.tag}?`))return;
+  if(corrigindo){ const adiante=destinos(m).filter(x=>x.status!=="pending");
+    if(adiante.length&&!confirm(`Atenção: ${adiante.map(x=>x.code).join(", ")} já começou/terminou. Corrigir agora pode bagunçar a chave. Continuar mesmo assim?`)) return; }
   await setMatch({winner:w,status:"done"},`${t.tag} venceu`);
-  const isFinal=m.bracket_round===maxRound();
+  const isFinal=m.code?m.win_to==="Campeao":m.bracket_round===maxRound();
   await setState({event:{type:"win",match_id:m.id,team_id:w},event_at:new Date().toISOString(),...(isFinal?{screen:"champion"}:{})});
+  if(m.code){ await avancar(m,w); return; }
   const nxt=db.matches.find(x=>x.bracket_round===m.bracket_round+1&&x.slot===Math.ceil(m.slot/2));
   if(nxt){const key=m.slot%2===1?"team_a":"team_b";await run(sb.from("matches").update({[key]:w}).eq("id",nxt.id),`${t.tag} avançou`);}
 }
+$("reopenBtn").onclick=async()=>{
+  const m=cur(); if(!m||m.status!=="done"){ toast("Só dá para desfazer partida encerrada",true); return; }
+  const travadas=destinos(m).filter(x=>x.status!=="pending");
+  if(travadas.length){ toast(`Não dá: ${travadas.map(x=>x.code).join(", ")} já começou/terminou`,true); return; }
+  if(!confirm(`Desfazer o resultado de ${m.code||"esta partida"}? Os times que avançaram saem da fase seguinte.`)) return;
+  if(m.code&&m.winner!=null){
+    for(const c of routeOf(db.matches,m,m.winner)){ const a=db.matches.find(x=>x.id===c.id); if(a) a[c.field]=null; await run(sb.from("matches").update({[c.field]:null}).eq("id",c.id)); }
+  }
+  await setMatch({winner:null,status:"live"},"Resultado desfeito");
+};
+$("goNext").onclick=()=>{ const n=nextMatchCtl(); if(!n){ toast("Não há partidas pendentes",true); return; } db.state.match_id=n.id; render(); setState({match_id:n.id},"Partida atual: "+(n.code||n.slot)); };
 
 async function createPoll(matchId,title,cats){
   await run(sb.from("polls").update({status:"closed"}).eq("status","open"));
@@ -598,6 +673,65 @@ $("cmToggle").onclick=async()=>{
   const r=await run(sb.from("sync_config").update({enabled:on}).eq("id",1).select(),on?"Sincronização ligada":"Sincronização desligada");
   if(r) await loadSync();
 };
+
+/* ---------- horarios ---------- */
+function renderSchedCtl(){
+  const box=$("schedEd"); if(!box) return;
+  if(box.contains(document.activeElement)&&document.activeElement.tagName==="INPUT") return;   // nao atrapalha a edicao
+  const nx=nextMatchCtl(), ord=[...db.matches].sort(byTime);
+  box.innerHTML=ord.map(m=>`<div class="mrow" style="grid-template-columns:48px 1fr 178px"><span><b>${esc(m.code||m.slot)}</b>${nx&&nx.id===m.id?" ▶":""}</span><span>${esc(sideTxt(m,"a"))} x ${esc(sideTxt(m,"b"))}${m.status==="done"?" ✓":m.status==="live"?" ●":""}</span><input type="datetime-local" data-sched="${m.id}" value="${toLocalInput(m.scheduled_at)}"></div>`).join("");
+  $("schedInfo").textContent=nx?"próxima: "+(nx.code||nx.slot):"";
+  const a=$("swA").value,b=$("swB").value;
+  const opts=ord.map(m=>`<option value="${m.id}">${esc(m.code||m.slot)} · ${esc(sideTxt(m,"a"))} x ${esc(sideTxt(m,"b"))}</option>`).join("");
+  $("swA").innerHTML=opts; $("swB").innerHTML=opts; if(a)$("swA").value=a; if(b)$("swB").value=b;
+}
+$("schedEd").addEventListener("change",e=>{
+  const i=e.target.closest("[data-sched]"); if(!i||!i.value) return;
+  const m=db.matches.find(x=>x.id===+i.dataset.sched); if(!m) return;
+  const iso=fromLocalInput(i.value); m.scheduled_at=iso; render();
+  run(sb.from("matches").update({scheduled_at:iso}).eq("id",m.id).select(),(m.code||"Partida")+": horário salvo");
+});
+$("swGo").onclick=async()=>{
+  const a=db.matches.find(x=>x.id===+$("swA").value), b=db.matches.find(x=>x.id===+$("swB").value);
+  if(!a||!b||a.id===b.id){ toast("Escolha duas partidas diferentes",true); return; }
+  const ta=a.scheduled_at, tb=b.scheduled_at; a.scheduled_at=tb; b.scheduled_at=ta; render();
+  await run(sb.from("matches").update({scheduled_at:tb}).eq("id",a.id));
+  await run(sb.from("matches").update({scheduled_at:ta}).eq("id",b.id),`Horários trocados: ${a.code} ⇄ ${b.code}`);
+};
+
+/* ---------- elencos ---------- */
+function renderRosCtl(){
+  const box=$("rosEd"); if(!box) return;
+  if(box.contains(document.activeElement)&&document.activeElement.tagName==="INPUT") return;
+  const m=cur(); const times=m?[m.team_a,m.team_b].map(id=>team(id)).filter(Boolean):[];
+  $("rosInfo").textContent=times.map(t=>t.tag).join(" x ");
+  if(!times.length){ box.innerHTML='<p class="hint">Defina os times da partida para ver os elencos.</p>'; return; }
+  box.innerHTML=times.map(t=>{
+    const ps=db.players.filter(p=>p.team_id===t.id).sort((a,b)=>(a.is_sub-b.is_sub)||a.id-b.id);
+    return `<div class="hint" style="margin-top:10px"><b>${esc(t.tag)}</b> · ${esc(t.name)}</div>`+ps.map(p=>{
+      const v=db.priv[p.id]||{};
+      return `<div class="prow"><div><b>${esc(p.nick)}</b>${p.is_sub?" · reserva":""} ${p.riot_pending?'<span class="tagwarn">⚠ confirmar ID</span>':""}<small>${esc([v.full_name,v.role,v.elo].filter(Boolean).join(" · "))}${v.obs?" · "+esc(v.obs):""}</small></div>`
+        +`<div style="display:grid;grid-template-columns:1fr 92px;gap:8px;margin-top:6px"><input type="text" value="${esc(v.riot_id||"")}" data-rid="${p.id}" placeholder="Nome#TAG" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn ${p.riot_pending?"red":""}" data-saveid="${p.id}">Salvar</button></div></div>`;
+    }).join("");
+  }).join("");
+}
+$("rosEd").onclick=async e=>{
+  const b=e.target.closest("[data-saveid]"); if(!b) return;
+  const pid=+b.dataset.saveid, inp=$("rosEd").querySelector(`[data-rid="${pid}"]`);
+  const rid=inp.value.trim().replace(/\s+#/,"#"), i=rid.indexOf("#");        // "nome #tag" -> "nome#tag"
+  if(i<1||i===rid.length-1){ toast("Falta o #TAG (formato Nome#TAG)",true); return; }
+  const nick=rid.slice(0,i).trim();
+  const r1=await run(sb.from("players").update({nick,riot_pending:false}).eq("id",pid).select());
+  const r2=await run(sb.from("players_private").update({riot_id:rid}).eq("player_id",pid).select());
+  if(!r1||!r2) return;
+  if(!r1.data.length||!r2.data.length){ toast("Sem permissão para alterar",true); return; }
+  const p=db.players.find(x=>x.id===pid); if(p){ p.nick=nick; p.riot_pending=false; }
+  (db.priv[pid]=db.priv[pid]||{}).riot_id=rid; toast("ID salvo: "+rid); render();
+};
+
+// rede instavel: atualiza sozinho a cada 30 s e quando a internet volta
+setInterval(()=>{ if(!$("appView").hidden&&!document.hidden) loadAll(); },30000);
+addEventListener("online",()=>{ if(!$("appView").hidden) loadAll(); });
 
 boot();
 </script>
