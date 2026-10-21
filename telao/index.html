@@ -308,18 +308,18 @@ body{display:grid;place-items:center;font-family:Rajdhani,"Arial Narrow",sans-se
 .bracket[hidden],.de[hidden]{display:none}
 .de{position:absolute;left:4rem;right:4rem;top:11rem;bottom:5rem}
 .de-lane{position:absolute;left:0;font-weight:700;font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
-.de-m{position:absolute;width:16.4rem;height:5.2rem;border:.3rem solid var(--ink);background:var(--paper);display:grid;grid-template-columns:3.7rem minmax(0,1fr)}
+.de-m{position:absolute;width:16.4rem;height:5.2rem;border:.3rem solid var(--ink);background:var(--paper);display:grid;grid-template-columns:3.7rem minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
 .de-m.live{border-color:var(--red);box-shadow:.25rem .25rem 0 var(--red)}
 .de-m.gf{border-color:var(--red);border-width:.4rem}
 .de-m.nxt{box-shadow:.25rem .25rem 0 var(--ink)}
-.de-id{border-right:.2rem solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;min-width:0}
+.de-id{border-right:.2rem solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;min-width:0;min-height:0;overflow:hidden}
 .de-id b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:2rem}
 .de-id small{font-weight:700;font-size:1rem;color:var(--gray);text-align:center;margin-top:.2rem}
-.de-rows{display:grid;grid-template-rows:1fr 1fr;min-width:0}
-.de-row{display:flex;justify-content:space-between;align-items:center;padding:0 .7rem;font-weight:700;font-size:1.75rem;white-space:nowrap;min-width:0;gap:.4rem}
+.de-rows{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-width:0;min-height:0}
+.de-row{display:flex;justify-content:space-between;align-items:center;padding:0 .7rem;font-weight:700;font-size:1.75rem;line-height:1;white-space:nowrap;min-width:0;min-height:0;overflow:hidden;gap:.4rem}
 .de-row+.de-row{border-top:.15rem solid var(--ink)}
 .de-row>span:first-child{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.de-row .s{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:2.1rem}
+.de-row .s{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:2.1rem;line-height:1}
 .de-row.win{background:var(--ink);color:var(--paper)}
 .de-row.lose{color:var(--gray);text-decoration:line-through;text-decoration-thickness:.18rem}
 .de-row .tbd{color:var(--gray);font-weight:600;font-size:1.4rem}
