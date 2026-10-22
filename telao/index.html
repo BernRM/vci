@@ -633,10 +633,10 @@ function fmtWhen(iso){
   const f=o=>d.toLocaleString("pt-BR",{...o,timeZone:TZ});
   return {wd:f({weekday:"short"}).replace(".","").toUpperCase(), dm:f({day:"2-digit",month:"2-digit"}), hm:f({hour:"2-digit",minute:"2-digit"})};
 }
-// proxima partida = a pendente de menor horario (o organizador reordena editando os horarios)
+// proxima partida = a pendente ou ao vivo de menor horario (o organizador reordena editando os horarios)
 function nextMatch(){
   const t=m=>Date.parse(m.scheduled_at)||Infinity;
-  return db.matches.filter(m=>m.status==="pending").sort((a,b)=>t(a)-t(b)||a.bracket_round-b.bracket_round||a.slot-b.slot)[0]||null;
+  return db.matches.filter(m=>m.status==="pending"||m.status==="live").sort((a,b)=>t(a)-t(b)||a.bracket_round-b.bracket_round||a.slot-b.slot)[0]||null;
 }
 const finalMatch=()=>db.matches.find(x=>x.code==="M14")||db.matches.find(x=>x.bracket==="Final")||db.matches.find(x=>x.bracket_round===maxRound());
 /*@route-begin*/
