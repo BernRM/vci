@@ -636,7 +636,7 @@ function fmtWhen(iso){
 // proxima partida = a pendente ou ao vivo de menor horario (o organizador reordena editando os horarios)
 function nextMatch(){
   const t=m=>Date.parse(m.scheduled_at)||Infinity;
-  return db.matches.filter(m=>m.status==="pending"||m.status==="live").sort((a,b)=>t(a)-t(b)||a.bracket_round-b.bracket_round||a.slot-b.slot)[0]||null;
+  return db.matches.filter(m=>(m.status==="pending"||m.status==="live")&&m.winner==null).sort((a,b)=>t(a)-t(b)||a.bracket_round-b.bracket_round||a.slot-b.slot)[0]||null;
 }
 const finalMatch=()=>db.matches.find(x=>x.code==="M14")||db.matches.find(x=>x.bracket==="Final")||db.matches.find(x=>x.bracket_round===maxRound());
 /*@route-begin*/
